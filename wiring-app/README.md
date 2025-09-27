@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./Banner.png" alt="WireLab Banner" />
+  <img src="https://giln0ckie.github.io/WireLab/static/media/Banner.13621b95f53050a71ee4.png" />
 </p>
 
 # WireLab
@@ -10,8 +10,6 @@ I originally built it just to test my own understanding while replacing some soc
 
 👉 **Try it live here:** [https://giln0ckie.github.io/WireLab/](https://giln0ckie.github.io/WireLab/)  
 *(Best viewed on desktop — mobile support coming soon.)*  
-
----
 
 ## ✨ Features
 
@@ -38,8 +36,6 @@ I originally built it just to test my own understanding while replacing some soc
 - Fault simulation: open circuits, high-resistance joints, broken neutrals, incorrect spurs  
 - Preset circuits like *Good ring*, *Broken neutral at lamp*, and *Spur off spur*  
 
----
-
 ## 🕹️ How to Use
 
 1. **Add components**  
@@ -61,22 +57,16 @@ I originally built it just to test my own understanding while replacing some soc
    - Try a spur off a spur and see why it fails  
    - Break a neutral and use the meter to diagnose  
 
----
-
 ## ⚠️ Disclaimer
 
 WireLab is **purely educational and for fun**.  
 It is **not** a substitute for electrical training, professional qualifications, or BS 7671 compliance.  
-
----
 
 ## 🛠 Tech Stack
 
 - **React** for UI & logic  
 - **SVG** for interactive floorplan, wiring, and components  
 - Custom simulation engine (resistance, ampacity, fault logic)  
-
----
 
 ## 👤 Author
 
