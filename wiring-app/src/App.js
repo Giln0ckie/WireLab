@@ -64,6 +64,8 @@ const SCISSORS_CURSOR = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(`
 </svg>
 `)} `;
 
+// (ComponentTypes defined above)
+
 // Utility functions for wire cutting
 const distanceToSegment = (point, segA, segB) => {
   const A = segA, B = segB, P = point;
@@ -86,9 +88,7 @@ const projectPointOnSegment = (point, segA, segB) => {
   return { x: A.x + t * AB.x, y: A.y + t * AB.y, t };
 };
 
-const pointsEqual = (a, b, tolerance = 0.1) => {
-  return Math.abs(a.x - b.x) < tolerance && Math.abs(a.y - b.y) < tolerance;
-};;
+// Removed unused pointsEqual helper to satisfy lint
 
 /**
  * UK Wiring Practice Trainer — interactive prototype (with fixes)
@@ -161,12 +161,6 @@ const TerminalTypes = {
 const ComponentTypes = {
   SUPPLY: "SUPPLY",
   LAMP: "LAMP",
-  SOCKET: "SOCKET", // legacy or generic socket
-  SOCKET_1G: "SOCKET_1G",
-  SOCKET_2G: "SOCKET_2G",
-  SOCKET_2G_SW: "SOCKET_2G_SW",
-  FCU_UNSW: "FCU_UNSW",
-  FCU_SW: "FCU_SW",
   SWITCH_1WAY: "SWITCH_1WAY",
   SWITCH_2WAY: "SWITCH_2WAY",
   SWITCH_INTERMEDIATE: "SWITCH_INTERMEDIATE",
@@ -352,29 +346,7 @@ function makeLamp(x, y) {
   };
 }
 
-function makeSocket(x, y) {
-  return {
-    id: newId(),
-    type: ComponentTypes.SOCKET,
-    label: "Socket",
-    x,
-    y,
-    terminals: [
-      { id: newId(), name: "LIN", t: TerminalTypes.LIN, dx: 10, dy: 10 },
-      { id: newId(), name: "LOUT", t: TerminalTypes.LOUT, dx: 10, dy: 30 },
-      { id: newId(), name: "NIN", t: TerminalTypes.NIN, dx: 10, dy: 50 },
-      { id: newId(), name: "NOUT", t: TerminalTypes.NOUT, dx: 10, dy: 70 },
-      { id: newId(), name: "EIN", t: TerminalTypes.EIN, dx: 10, dy: 90 },
-      { id: newId(), name: "EOUT", t: TerminalTypes.EOUT, dx: 10, dy: 110 },
-    ],
-    internalLinks: [
-      // Connect IN and OUT terminals internally
-      ["LIN", "LOUT"],
-      ["NIN", "NOUT"],
-      ["EIN", "EOUT"]
-    ],
-  };
-}
+// Removed legacy generic makeSocket (unused)
 
 function makeSwitch1Way(x, y) {
   return {
@@ -635,7 +607,6 @@ function makeConsumerUnit(x, y, opts = {}) {
 function makeConsumerUnitSplit(x, y, opts = {}) {
   const ways = Math.max(4, Math.min(20, opts.ways ?? 10));
   const half = Math.floor(ways / 2);
-  const groupMap = Array.from({ length: ways }, (_, i) => (i < half ? "A" : "B"));
   const defaultRatings = ["6A","6A","10A","32A","32A","6A","16A","20A","32A","40A"];
   const ratings = Array.from({length: ways}, (_, i) => opts.ratings?.[i] ?? defaultRatings[i] ?? "20A");
   const rcboFlags = Array.from({length: ways}, (_, i) => !!(opts.rcbo?.[i]));
@@ -847,7 +818,6 @@ function requiredCSAForTerminal(comp, term, region) {
   const COOKER_LN = 6.0, COOKER_E = 2.5; // simplified CPC
 
   switch (comp.type) {
-    case ComponentTypes.SOCKET:
     case ComponentTypes.SOCKET_1G:
     case ComponentTypes.SOCKET_2G:
     case ComponentTypes.SOCKET_2G_SWITCHED:
@@ -900,7 +870,11 @@ function isWireUndersized(components, w, region = 'UK') {
 
 // Graph analysis helpers
 function terminalById(components, tid) {
-  for (const c of components) for (const t of c.terminals) if (t.id === tid) return { comp: c, term: t };
+  for (const c of components) {
+    for (const t of c.terminals) {
+      if (t.id === tid) return { comp: c, term: t };
+    }
+  }
   return null;
 }
 
@@ -1325,10 +1299,9 @@ Presets.SPLIT_LOAD_DEMO = {
     addSized(E1, s1EIN, ConductorKinds.E, 1.5, 'T&E'); addSized(s1EIN, s2EIN, ConductorKinds.E, 1.5, 'T&E'); addSized(s2EIN, E1, ConductorKinds.E, 1.5, 'T&E');
     // Make Way1 RCBO, wire lamp to Way1
     cu.state.ways[0].rcbo = true;
-    const L1 = cu.terminals.find(t=>t.name==="LOUT1")?.id;
+    // const L1 = cu.terminals.find(t=>t.name==="LOUT1")?.id; // learner to wire
     const N1 = cu.terminals.find(t=>t.name==="NOUT1")?.id;
-    // Size lighting radials at 1.0 mm² for demo
-    addSized(L1, lamp.terminals.find(t=>t.name==="L")?.id, ConductorKinds.L, 1.0, 'T&E');
+    // Size lighting radials at 1.0 mm² for demo (leave live for learner to connect)
     addSized(N1, lamp.terminals.find(t=>t.name==="N")?.id, ConductorKinds.N, 1.0, 'T&E');
     addSized(E1, lamp.terminals.find(t=>t.name==="E")?.id, ConductorKinds.E, 1.0, 'T&E');
     return { components: [cu, s1, s2, lamp], wires };
@@ -1347,7 +1320,6 @@ Presets.LESSON_UPSTAIRS_LIGHTS = {
     const sw2  = makeSwitch2Way(460, 220);
     // Give learner a neutral/earth landing; leave switched live unwired on purpose
     const wires = []; const add=(a,b,k)=>wires.push({id:newId(),a,b,kind:k});
-    const L1 = cu.terminals.find(t=>t.name==="LOUT1")?.id;
     const N1 = cu.terminals.find(t=>t.name==="NOUT1")?.id ?? cu.terminals.find(t=>/^N_A/.test(t.name))?.id;
     const E1 = cu.terminals.find(t=>t.name==="E1")?.id;
     add(N1, rose.terminals.find(t=>t.name==="N1")?.id, ConductorKinds.N);
@@ -1692,7 +1664,7 @@ export default function App() {
     /* Pan/space overrides */
     .panning, .panning * { cursor: grabbing !important; }
     .space-grab:not(.panning), .space-grab:not(.panning) * { cursor: grab !important; }
-  `, [penCursorPng, scissorsCursorPng]);
+  `, [penCursorPng, scissorsCursorPng, PEN_HOTSPOT.x, PEN_HOTSPOT.y, SCISSOR_HOTSPOT.x, SCISSOR_HOTSPOT.y]);
   // Fun deaths overlay system
   const [funDeathsEnabled, setFunDeathsEnabled] = useState(false);
   const [funDeathsTreatNEAsDeadly, setFunDeathsTreatNEAsDeadly] = useState(false);
@@ -1752,6 +1724,13 @@ export default function App() {
     });
   };
 
+  // Add a component at a default drop position; factory is (x,y)=>component
+  const addComponent = useCallback((maker) => {
+    const drop = { x: 120, y: 120 };
+    const c = maker(drop.x, drop.y);
+    setComponents(cs => [...cs, c]);
+  }, [setComponents]);
+
   // Map toolbox kinds to makers and add to canvas
   const addToolboxItem = useCallback((it) => {
     const kind = it.kind;
@@ -1783,7 +1762,7 @@ export default function App() {
       default: break;
     }
     if (maker) addComponent(maker);
-  }, []);
+  }, [addComponent]);
   // Space key for pan mode
   const [spacePressed, setSpacePressed] = useState(false);
   
@@ -1797,8 +1776,9 @@ export default function App() {
   const PROBE_R = 7;               // marker radius
 
   // UI and component helpers (inside component)
-  const updateComponent = (id, fn) =>
+  const updateComponent = useCallback((id, fn) => {
     setComponents((cs) => cs.map((c) => (c.id === id ? fn(c) : c)));
+  }, [setComponents]);
   // NEW: commit label change
   const commitWayLabel = useCallback((compId, i, value) => {
     updateComponent(compId, (prev) => {
@@ -1864,7 +1844,7 @@ export default function App() {
     setWires(prevState.wires);
     clearSelection();
     setPending(null);
-  }, [components, wires, undoStack]);
+  }, [components, wires, undoStack, clearSelection]);
 
   const redo = useCallback(() => {
     if (redoStack.length === 0) return;
@@ -1875,7 +1855,7 @@ export default function App() {
     setWires(nextState.wires);
     clearSelection();
     setPending(null);
-  }, [components, wires, redoStack]);
+  }, [components, wires, redoStack, clearSelection]);
 
   // ------- Duplicate selection (components + internal wires) -------
   const duplicateSelection = useCallback(() => {
@@ -1979,8 +1959,7 @@ export default function App() {
   const [bundlePending, setBundlePending] = useState(null); // temporary bundle terminals
   const [autoTidy, setAutoTidy] = useState(false);
   
-  // Inspection checklist
-  const [checklist, setChecklist] = useState([]);
+  // Inspection checklist (reserved for future use)
   
   // ------- Helpers: coordinate transforms -------
   const toWorld = useCallback((evt) => {
@@ -2083,6 +2062,7 @@ export default function App() {
         console.warn('Failed to load state from URL:', e);
       }
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Share state via URL
@@ -2096,7 +2076,7 @@ export default function App() {
   }, [components, wires]);
 
   // Multi-remove: components and/or wires (placed here so effects below can depend on it)
-  const removeSelected = () => {
+  const removeSelected = useCallback(() => {
     const hasAny = selection.components.length || selection.wires.length;
     if (!hasAny) return;
 
@@ -2124,7 +2104,7 @@ export default function App() {
 
     clearSelection();
     setPending(null);
-  };
+  }, [selection, components, pushHistory, setComponents, setWires, clearSelection]);
 
   // Wire cutting function
   const cutWireAt = (wire, point, options = {}) => {
@@ -2276,7 +2256,7 @@ export default function App() {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [undo, redo, duplicateSelection, clearSelection]);
+  }, [undo, redo, duplicateSelection, clearSelection, quickTool]);
 
   // Delete/Backspace removes selection when focus isn't in a text input
   useEffect(() => {
@@ -2580,12 +2560,6 @@ export default function App() {
   }, [components, wires, supplyL, supplyN, supplyE]);
 
   // --------- UI helpers ---------
-  const addComponent = (maker) => {
-    pushHistory();
-    setComponents((cs) => [...cs, maker(40 + cs.length * 40, 200)]);
-  };
-
-  
 
   const onTerminalClick = (tid) => {
     if (quickTool) return; // disable wiring while quick tool active
@@ -2743,7 +2717,7 @@ export default function App() {
   const onMouseDownTerminal = (compId, termId, evt) => {
     evt.preventDefault();
     evt.stopPropagation();
-    const start = toWorld(evt);
+  // const start = toWorld(evt); // unused
     const comp = components.find(c => c.id === compId);
     if (!comp) return;
     const term = comp.terminals.find(t => t.id === termId);
@@ -4703,7 +4677,7 @@ export default function App() {
                     const L = c.state?._layout || {};
                     var BOX_W = L.BOX_W ?? 190, BOX_H = L.BOX_H ?? 240;
                     var WAY_Y0 = L.WAY_Y0 ?? 56, WAY_SP = L.WAY_SP ?? 14;
-                    var LOUT_X = L.LOUT_X ?? 168, N_BAR_Y = L.N_BAR_Y ?? 200, E_BAR_Y = L.E_BAR_Y ?? 224;
+                    const N_BAR_Y = L.N_BAR_Y ?? 200; const E_BAR_Y = L.E_BAR_Y ?? 224;
 
                     return (
                       <g>
