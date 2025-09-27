@@ -37,42 +37,32 @@ const sliderStyle = `
   }
 `;
 
-// Realistic voltage pen cursor - encoded properly for cross-browser compatibility
+// Realistic voltage pen cursor - encoded for cross-browser compatibility
 const VOLTAGE_PEN_CURSOR = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(`
-<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
-  <g transform="rotate(-30 16 16)">
-    <!-- Pen body (yellow like real voltage testers) -->
-    <rect x="14" y="2" width="4" height="20" fill="#fbbf24" rx="2" stroke="#374151" stroke-width="0.5"/>
-    <!-- Battery compartment -->
-    <rect x="13" y="22" width="6" height="4" fill="#6b7280" rx="1"/>
-    <!-- Grip section -->
-    <rect x="12.5" y="26" width="7" height="3" fill="#4b5563" rx="1.5"/>
-    <!-- LED indicator (red when live) -->
-    <circle cx="16" cy="8" r="1.5" fill="#ef4444"/>
-    <!-- Brand text -->
-    <text x="16" y="14" font-size="3" text-anchor="middle" fill="#374151" font-family="Arial">TEST</text>
-    <!-- Probe tip -->
-    <rect x="15.5" y="1" width="1" height="2" fill="#9ca3af"/>
+<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'>
+  <g transform='rotate(-30 16 16)'>
+    <rect x='14' y='2' width='4' height='20' fill='#fbbf24' rx='2' stroke='#374151' stroke-width='0.5'/>
+    <rect x='13' y='22' width='6' height='4' fill='#6b7280' rx='1'/>
+    <rect x='12.5' y='26' width='7' height='3' fill='#4b5563' rx='1.5'/>
+    <circle cx='16' cy='8' r='1.5' fill='#ef4444'/>
+    <text x='16' y='14' font-size='3' text-anchor='middle' fill='#374151' font-family='Arial'>TEST</text>
+    <rect x='15.5' y='1' width='1' height='2' fill='#9ca3af'/>
   </g>
 </svg>
-`)}`;
+`)} `;
 
 // Scissors cursor for wire cutting
 const SCISSORS_CURSOR = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(`
-<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
-  <g transform="rotate(-15 16 16)">
-    <!-- Left blade -->
-    <path d="M8 14 L14 8 L16 10 L10 16 Z" fill="#6b7280" stroke="#374151" stroke-width="0.5"/>
-    <!-- Right blade -->
-    <path d="M18 10 L24 16 L22 18 L16 12 Z" fill="#6b7280" stroke="#374151" stroke-width="0.5"/>
-    <!-- Pivot screw -->
-    <circle cx="16" cy="12" r="2" fill="#9ca3af" stroke="#374151" stroke-width="0.5"/>
-    <!-- Handle rings -->
-    <circle cx="10" cy="20" r="3" fill="none" stroke="#4b5563" stroke-width="1.5"/>
-    <circle cx="22" cy="20" r="3" fill="none" stroke="#4b5563" stroke-width="1.5"/>
+<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'>
+  <g transform='rotate(-15 16 16)'>
+    <path d='M8 14 L14 8 L16 10 L10 16 Z' fill='#6b7280' stroke='#374151' stroke-width='0.5'/>
+    <path d='M18 10 L24 16 L22 18 L16 12 Z' fill='#6b7280' stroke='#374151' stroke-width='0.5'/>
+    <circle cx='16' cy='12' r='2' fill='#9ca3af' stroke='#374151' stroke-width='0.5'/>
+    <circle cx='10' cy='20' r='3' fill='none' stroke='#4b5563' stroke-width='1.5'/>
+    <circle cx='22' cy='20' r='3' fill='none' stroke='#4b5563' stroke-width='1.5'/>
   </g>
 </svg>
-`)}`;
+`)} `;
 
 // Utility functions for wire cutting
 const distanceToSegment = (point, segA, segB) => {
@@ -2000,16 +1990,21 @@ export default function App() {
     // Get SVG bounding rect
     const rect = svg.getBoundingClientRect();
     
+    // Support mouse and touch events
+    const touch = evt && (evt.touches?.[0] || evt.changedTouches?.[0]);
+    const clientX = touch ? touch.clientX : evt.clientX;
+    const clientY = touch ? touch.clientY : evt.clientY;
+    
     // Convert to SVG coordinates using viewBox
-    const x = (evt.clientX - rect.left) * (view.w / rect.width) + view.x;
-    const y = (evt.clientY - rect.top) * (view.h / rect.height) + view.y;
+    const x = (clientX - rect.left) * (view.w / rect.width) + view.x;
+    const y = (clientY - rect.top) * (view.h / rect.height) + view.y;
     
     // Transform through the viewport transform
     const transformedX = (x - viewTransform.x) / viewTransform.k;
     const transformedY = (y - viewTransform.y) / viewTransform.k;
     
     console.log('toWorld:', { 
-      clientX: evt.clientX, clientY: evt.clientY, 
+  clientX, clientY, 
       viewBox: { x: view.x, y: view.y, w: view.w, h: view.h },
       transform: viewTransform,
       svgCoords: { x, y },
@@ -2035,6 +2030,7 @@ export default function App() {
   };
 
   const panRef = useRef({ panning:false, ox:0, oy:0, vx:0, vy:0, startTime:0, panTimeout:null });
+  const pinchRef = useRef({ active:false, lastDist:0, lastMid:{ x:0, y:0 } });
   const startPan = (e) => {
     // Only start pan if space is pressed and left-clicking on SVG background
     if (!spacePressed || e.button !== 0 || e.target !== e.currentTarget) return;
@@ -2756,6 +2752,7 @@ export default function App() {
     const startDY = term.dy;
     let moved = false;
     const move = (e) => {
+      if (e && e.cancelable) e.preventDefault();
       const p = toWorld(e);
       // We want absolute follow: set dx/dy so terminal lands under cursor
       const targetDX = p.x - comp.x;
@@ -2770,6 +2767,8 @@ export default function App() {
     const up = (e) => {
       window.removeEventListener('mousemove', move);
       window.removeEventListener('mouseup', up);
+      window.removeEventListener('touchmove', move);
+      window.removeEventListener('touchend', up);
 
       // Determine drop intent (attach to terminal or splice into wire)
       const p = toWorld(e);
@@ -2849,6 +2848,8 @@ export default function App() {
     };
     window.addEventListener('mousemove', move);
     window.addEventListener('mouseup', up);
+    window.addEventListener('touchmove', move, { passive: false });
+    window.addEventListener('touchend', up);
   };
 
   const onMouseMoveSVG = (evt) => {
@@ -3243,11 +3244,25 @@ export default function App() {
         </div>
       </div>
       
+  {/* Mobile quick controls */}
+  <div className="px-4 pt-2 pb-0 md:hidden">
+    <div className="flex items-center justify-end gap-2">
+      <button
+        className="text-xs px-2 py-1 rounded border neutral-btn bg-white hover:bg-slate-50"
+        onClick={() => setCollapsedFor([...LEFT_SECTION_IDS, ...RIGHT_SECTION_IDS], true)}
+      >Hide panels</button>
+      <button
+        className="text-xs px-2 py-1 rounded border neutral-btn bg-white hover:bg-slate-50"
+        onClick={() => setCollapsedFor([...LEFT_SECTION_IDS, ...RIGHT_SECTION_IDS], false)}
+      >Show panels</button>
+    </div>
+  </div>
+
   {/* Main Content */}
-  <div className="p-4 grid gap-4 grid-cols-[380px_1fr_360px] items-start font-sans overflow-x-auto">
+  <div className="p-4 grid gap-4 grid-cols-1 md:grid-cols-[360px_1fr] lg:grid-cols-[380px_1fr_360px] items-start font-sans overflow-x-auto">
       {/* Sidebar */}
       <div
-        className="space-y-3 sticky top-4 max-h-[calc(100vh-2rem)] overflow-y-auto pr-2 overscroll-contain backdrop-blur rounded-2xl shadow-sm p-3 w-[380px] min-w-[380px] col-start-1 self-start themed-panel"
+        className="space-y-3 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] overflow-y-auto lg:pr-2 overscroll-contain backdrop-blur rounded-2xl shadow-sm p-3 w-full min-w-0 md:w-[360px] md:min-w-[360px] lg:w-[380px] lg:min-w-[380px] lg:col-start-1 self-start themed-panel"
         role="region"
         aria-label="Toolbox panel"
         style={{ background: 'var(--panel-bg)', boxShadow: '0 0 0 1px var(--panel-border)' }}
@@ -3871,7 +3886,7 @@ export default function App() {
       {/* End sticky sidebar wrapper */}
 
   {/* Center column wrapper: groups help + canvas into one grid item */}
-  <div className="space-y-4 min-w-0 col-start-2 self-start sticky top-4 max-h-[calc(100vh-2rem)] overflow-y-auto overscroll-contain">
+  <div className="space-y-4 min-w-0 self-start lg:col-start-2 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] overflow-y-auto overscroll-contain">
 
       {/* Top Toolbar: Undo / Redo / Restart */}
       <div style={{ display:'flex', gap:8, alignItems:'center' }}>
@@ -3936,6 +3951,7 @@ export default function App() {
           ref={svgRef}
           className="min-w-[1400px] h-[860px]"
           viewBox={`${view.x} ${view.y} ${view.w} ${view.h}`}
+          style={{ touchAction: 'none' }}
           onWheel={(e)=>{ e.preventDefault(); const f = e.deltaY<0 ? 1.1 : 1/1.1; zoomAt(e.clientX, e.clientY, f); }}
           onMouseMove={(e)=>{ 
             // Pan takes priority if active
@@ -3948,6 +3964,42 @@ export default function App() {
             }
           }}
           onMouseUp={(e)=>{ endPan(); onMouseUpSVG(); }}
+          onTouchMove={(e)=>{
+            // Pinch zoom handling (two fingers)
+            if (e.touches && e.touches.length === 2) {
+              const [t1, t2] = [e.touches[0], e.touches[1]];
+              const dx = t2.clientX - t1.clientX;
+              const dy = t2.clientY - t1.clientY;
+              const dist = Math.hypot(dx, dy);
+              const mid = { x: (t1.clientX + t2.clientX) / 2, y: (t1.clientY + t2.clientY) / 2 };
+              if (!pinchRef.current.active) {
+                pinchRef.current.active = true;
+                pinchRef.current.lastDist = dist;
+                pinchRef.current.lastMid = mid;
+              } else {
+                const rel = dist / (pinchRef.current.lastDist || dist);
+                if (rel && isFinite(rel) && rel > 0) {
+                  zoomAt(mid.x, mid.y, rel);
+                  pinchRef.current.lastDist = dist;
+                  pinchRef.current.lastMid = mid;
+                }
+              }
+              e.preventDefault();
+              e.stopPropagation();
+              return;
+            }
+            if (panRef.current.panning || drag || marquee) {
+              e.preventDefault();
+              e.stopPropagation();
+            }
+            if (panRef.current.panning) {
+              doPan(e);
+            } else {
+              onMouseMoveSVG(e);
+            }
+          }}
+          onTouchEnd={(e)=>{ pinchRef.current.active=false; endPan(); onMouseUpSVG(); }}
+          onTouchCancel={(e)=>{ pinchRef.current.active=false; endPan(); onMouseUpSVG(); }}
           onMouseLeave={endPan}
           onMouseDown={(e) => {
             // Handle clicks (scissors should work even when clicking on wires/elements)
@@ -4006,6 +4058,49 @@ export default function App() {
                 setMarquee({ x0: p.x, y0: p.y, x1: p.x, y1: p.y });
                 clearSelection();
               }
+            }
+          }}
+          onTouchStart={(e) => {
+            // Two-finger pinch start
+            if (e.touches && e.touches.length === 2) {
+              const [t1, t2] = [e.touches[0], e.touches[1]];
+              const dx = t2.clientX - t1.clientX;
+              const dy = t2.clientY - t1.clientY;
+              const dist = Math.hypot(dx, dy);
+              const mid = { x: (t1.clientX + t2.clientX) / 2, y: (t1.clientY + t2.clientY) / 2 };
+              pinchRef.current.active = true;
+              pinchRef.current.lastDist = dist;
+              pinchRef.current.lastMid = mid;
+              e.preventDefault();
+              e.stopPropagation();
+              return;
+            }
+            // Single-finger: scissors and marquee mirror mouse down
+            if (quickTool === 'scissors') {
+              e.preventDefault();
+              e.stopPropagation();
+              const p = toWorld(e);
+              const hit = hitTestWireAtPoint(wires, components, p, 12);
+              if (hit) {
+                const targetWire = wires.find(w => w.id === hit.wireId);
+                if (targetWire) {
+                  const cutResult = cutWireAt(targetWire, p, { createVisibleJunction: false });
+                  if (cutResult) {
+                    pushHistory();
+                    setWires(ws => ws.filter(w => w.id !== cutResult.removedWireId).concat(cutResult.newWires));
+                    setComponents(cs => [...cs, cutResult.junction]);
+                    setQuickTool(null);
+                    setScissorsHoverPoint(null);
+                  }
+                }
+              }
+              return;
+            }
+            if (e.target === e.currentTarget) {
+              e.preventDefault();
+              const p = toWorld(e);
+              setMarquee({ x0: p.x, y0: p.y, x1: p.x, y1: p.y });
+              clearSelection();
             }
           }}
           onClick={(e) => {
@@ -4077,8 +4172,9 @@ export default function App() {
                 // Junctions do not have a big box; use a tiny, mostly invisible hit area
                 <g>
                   {/* very small invisible rect to allow hit/drag if needed */}
-                  <rect x={-6} y={-6} width={12} height={12} rx={4} fill="transparent" stroke="none"
-                        onMouseDown={(e) => onMouseDownComponent(c, e)}
+      <rect x={-6} y={-6} width={12} height={12} rx={4} fill="transparent" stroke="none"
+        onMouseDown={(e) => onMouseDownComponent(c, e)}
+        onTouchStart={(e) => { e.preventDefault(); onMouseDownComponent(c, e); }}
                         onClick={(e) => { if (e.shiftKey) toggleSelection("component", c.id); else replaceSelection("component", c.id); }}
                         style={{cursor:'move'}} />
                 </g>
@@ -4094,6 +4190,7 @@ export default function App() {
                     stroke={isSelected("component", c.id) ? "#2563eb" : compStroke(c.type)}
                     strokeWidth={2}
                     onMouseDown={(e) => onMouseDownComponent(c, e)}
+                    onTouchStart={(e) => { e.preventDefault(); onMouseDownComponent(c, e); }}
                     onClick={(e) => {
                       if (e.shiftKey) toggleSelection("component", c.id);
                       else replaceSelection("component", c.id);
@@ -4117,6 +4214,7 @@ export default function App() {
                     key={t.id}
                     transform={`translate(${pos.x}, ${pos.y})`}
                     onClick={() => onTerminalClick(globalId)}
+                    onTouchStart={(e) => { e.preventDefault(); onTerminalClick(globalId); }}
                     tabIndex={0}
                     role="button"
                     aria-label={`Terminal ${t.name} of ${c.label}`}
@@ -4145,6 +4243,7 @@ export default function App() {
                               stroke={isSelected('component', c.id) ? '#2563eb' : '#9ca3af'}
                               strokeWidth={2}
                               onMouseDown={(e)=>onMouseDownTerminal(c.id, t.id, e)}
+            onTouchStart={(e)=>{ e.preventDefault(); onMouseDownTerminal(c.id, t.id, e); }}
                               onClick={(e)=>{ e.stopPropagation(); if (e.shiftKey) toggleSelection('component', c.id); else replaceSelection('component', c.id); }}
                               style={{cursor:'grab', opacity: c.hidden ? 0.85 : 1}}
                               filter={isSelected('component', c.id) ? 'url(#selGlow)' : undefined}
@@ -4912,7 +5011,7 @@ export default function App() {
 
   {/* Right panel: Checks, Presets, Save/Load, Meter, Lamps, Earth Continuity */}
       <div
-        className="sticky top-4 max-h-[calc(100vh-2rem)] overflow-y-auto md:pl-2 overscroll-contain backdrop-blur rounded-2xl shadow-sm p-4 w-[360px] min-w-[360px] col-start-3 self-start themed-panel"
+        className="lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] overflow-y-auto lg:pl-2 overscroll-contain backdrop-blur rounded-2xl shadow-sm p-4 w-full min-w-0 lg:w-[360px] lg:min-w-[360px] lg:col-start-3 self-start themed-panel"
         role="region"
         aria-label="Analysis panel"
         style={{ background: 'var(--panel-bg)', boxShadow: '0 0 0 1px var(--panel-border)' }}
