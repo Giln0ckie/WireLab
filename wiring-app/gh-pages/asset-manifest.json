@@ -1,0 +1,16 @@
+{
+  "files": {
+    "main.css": "/WireLab/static/css/main.f3fc5bb6.css",
+    "main.js": "/WireLab/static/js/main.3c713e8a.js",
+    "static/js/453.e897e7ab.chunk.js": "/WireLab/static/js/453.e897e7ab.chunk.js",
+    "static/media/Banner.png": "/WireLab/static/media/Banner.13621b95f53050a71ee4.png",
+    "index.html": "/WireLab/index.html",
+    "main.f3fc5bb6.css.map": "/WireLab/static/css/main.f3fc5bb6.css.map",
+    "main.3c713e8a.js.map": "/WireLab/static/js/main.3c713e8a.js.map",
+    "453.e897e7ab.chunk.js.map": "/WireLab/static/js/453.e897e7ab.chunk.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.f3fc5bb6.css",
+    "static/js/main.3c713e8a.js"
+  ]
+}
