@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://giln0ckie.github.io/WireLab/static/media/Banner.13621b95f53050a71ee4.png" />
+  <img src="https://giln0ckie.github.io/WireLab/static/media/Banner.13621b95f53050a71ee4.png" alt="WireLab Banner" />
 </p>
 
 # WireLab
@@ -10,6 +10,14 @@ I originally built it just to test my own understanding while replacing some soc
 
 👉 **Try it live here:** [https://giln0ckie.github.io/WireLab/](https://giln0ckie.github.io/WireLab/)  
 *(Best viewed on desktop — mobile support coming soon.)*  
+
+📖 Table of Contents
+
+- [Features](#-features)  
+- [How to Use](#️-how-to-use)  
+- [Disclaimer](#-disclaimer)  
+- [Tech Stack](#-tech-stack)  
+- [Author](#-author)  
 
 ## ✨ Features
 
@@ -59,14 +67,19 @@ I originally built it just to test my own understanding while replacing some soc
 
 ## ⚠️ Disclaimer
 
-WireLab is **purely educational and for fun**.  
-It is **not** a substitute for electrical training, professional qualifications, or BS 7671 compliance.  
+WireLab is a **learning and practice tool** that simulates wiring logic in a browser.  
+
+It does **not** guarantee compliance with wiring regulations (such as **BS 7671**) and must **not** be used as professional design or installation guidance. 
+
+It’s built purely for **experimentation, and fun**.  
 
 ## 🛠 Tech Stack
 
-- **React** for UI & logic  
-- **SVG** for interactive floorplan, wiring, and components  
-- Custom simulation engine (resistance, ampacity, fault logic)  
+- **React + Vite** – core app framework and build tooling  
+- **SVG rendering** – components, wires, and interactive grid  
+- **Custom wiring engine** – models terminals, connections, resistance, and faults  
+- **Dijkstra algorithm** – used for lowest-resistance pathfinding when measuring resistance/voltage  
+- **Presets system** – JSON-based saved circuits for quick demos and practice  
 
 ## 👤 Author
 
