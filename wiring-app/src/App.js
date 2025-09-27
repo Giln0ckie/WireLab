@@ -768,7 +768,7 @@ function makeConsumerUnitSplit(x, y, opts = {}) {
   const half = Math.floor(ways / 2);
   const defaultRatings = ["6A","6A","10A","32A","32A","6A","16A","20A","32A","40A"];
   const ratings = Array.from({length: ways}, (_, i) => opts.ratings?.[i] ?? defaultRatings[i] ?? "20A");
-  const rcboFlags = Array.from({length: ways}, (_, i) => !!(opts.rcbo?.[i]));
+  const rcboFlags = Array.from({ length: ways }, (_, i) => !!(opts.rcbo?.[i]));
   const labels    = Array.from({length: ways}, (_, i) => opts.labels?.[i] ?? `Way ${i+1}`);
   const terms = [];
   const tL = { id: newId(), name: "L", t: TerminalTypes.L, dx: 15, dy: 33 };
@@ -1658,6 +1658,15 @@ const TOOLBOX_GROUPS = [
       { id: "garden_light", label: "Garden light", kind: "garden_light", tags:["requires RCD","outdoor"] },
     ],
   },
+  {
+    id: "ev",
+    label: "EV Charging",
+    icon: Icon.Zap,
+    items: [
+      { id: "evse_1p", label: "EV charger (7.2 kW)", kind: "evse_1p_7kw", tags:["EV","RCD","RDC-DD","Open-PEN"] },
+      { id: "evse_3p", label: "EV charger (3‑phase 11/22 kW)", kind: "evse_3p_11_22", tags:["EV","3‑phase","RCD","Open-PEN"] },
+    ],
+  },
 ];
 
 const normalise = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
@@ -1771,8 +1780,7 @@ function GroupedToolbox({ onAdd, defaultOpen = ["power","lighting"], denseDefaul
       {/* Footer tip */}
       <div className="mt-1 flex items-center justify-between px-1 text-[11px] text-slate-500">
         <span className="inline-flex items-center gap-1"><Icon.Zap className="h-3 w-3" />Tip: Drag items to canvas or click to insert</span>
-        <span className="text-slate-400">WCAG AA</span>
-      </div>
+            </div>
     </div>
   );
 }
@@ -1964,6 +1972,8 @@ export default function App() {
       case 'outdoor_socket_rcd': maker = makeOutdoorSocketRCD; break;
       case 'outdoor_jb_ip66': maker = makeOutdoorJunctionBox; break;
       case 'garden_light': maker = makeGardenLight; break;
+      case 'evse_1p_7kw': maker = makeEVSE1P; break;
+      case 'evse_3p_11_22': maker = makeEVSE3P; break;
       default: break;
     }
     if (maker) addComponent(maker);
@@ -5742,10 +5752,6 @@ export default function App() {
               <p className="mt-1 text-[11px] text-slate-400">Training aid only — verify against BS 7671 and local building control guidance.</p>
             </div>
           </Collapsible>
-
-          <div className="pt-2 text-xs text-gray-600">
-            Harmonised colours (UK): Line = brown, Neutral = blue, Earth/CPC = green‑yellow.
-          </div>
         </div>
       </div>
     </div>
