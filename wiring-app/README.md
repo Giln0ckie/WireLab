@@ -88,3 +88,8 @@ It’s built purely for **experimentation, and fun**.
 </p>
 
 Made by **Giln0ckie**, supported by **AI Agents**.  
+
+# WireLab
+
+[![Deploy](https://github.com/Giln0ckie/WireLab/actions/workflows/deploy.yml/badge.svg)](https://github.com/Giln0ckie/WireLab/actions/workflows/deploy.yml)
+
