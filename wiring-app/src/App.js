@@ -207,12 +207,15 @@ const ConductorStyle = {
 };
 
 // --- Wire sizes, ampacity and resistance per metre (simplified educational values) ---
-const WIRE_SIZES = [1.0, 1.5, 2.5, 6.0];
+const WIRE_SIZES = [1.0, 1.5, 2.5, 6.0, 10.0, 16.0, 25.0];
 const AMPACITY_BY_SIZE = {
-  1.0: 11,   // A, typical lighting/control
-  1.5: 16,   // A, lighting/control
-  2.5: 20,   // A, ring finals/spurs
-  6.0: 40,   // A, cookers/showers
+  1.0: 11,    // A, typical lighting/control
+  1.5: 16,    // A, lighting/control
+  2.5: 20,    // A, ring finals/spurs
+  6.0: 40,    // A, cookers/showers/submains (short runs)
+  10.0: 64,   // A, simplified
+  16.0: 85,   // A, simplified
+  25.0: 114,  // A, simplified (typical 100A service tails)
 };
 // Approximate DC resistance of copper conductor per metre (Ω/m) at ~20°C
 // Values chosen for educational realism, not for design
@@ -221,12 +224,18 @@ const R_PER_M_BY_SIZE = {
   1.5: 0.0121,
   2.5: 0.00741,
   6.0: 0.00310,
+  10.0: 0.00183,
+  16.0: 0.00115,
+  25.0: 0.00069,
 };
 const THICKNESS_FACTOR_BY_SIZE = {
   1.0: 0.9,
   1.5: 0.95,
   2.5: 1.0,
   6.0: 1.18,
+  10.0: 1.6,
+  16.0: 1.8,
+  25.0: 2.1,
 };
 const formatSize = (s) => (s ? `${s} mm²` : "—");
 const getAmpacity = (s) => AMPACITY_BY_SIZE[s] ?? null;
@@ -257,6 +266,22 @@ const CablePresets = {
     cores: [{kind:ConductorKinds.L},{kind:ConductorKinds.N},{kind:ConductorKinds.E}],
     family: "T&E"
   },
+  "Tails + Earth": {
+    name: "Meter tails (L,N 25 mm²) + Main earth (16 mm²)",
+    // Use fixed sizes typical for UK domestic installations (100A service)
+    cores: [
+      { kind: ConductorKinds.L, fixedSizeMm2: 25.0 },
+      { kind: ConductorKinds.N, fixedSizeMm2: 25.0 },
+      { kind: ConductorKinds.E, fixedSizeMm2: 16.0 },
+    ],
+    family: "Service"
+  },
+  "Bonding (E)": {
+    name: "Main bonding conductor (10–16 mm²)",
+    // Earth-only bonding; defaults to 10 mm², can be changed via size selector if desired
+    cores: [ { kind: ConductorKinds.E, fixedSizeMm2: 10.0 } ],
+    family: "Bonding"
+  },
   "3C+E": {
     name: "3C+E (brown/black/grey + E)", 
     cores: [{kind:ConductorKinds.L},{kind:ConductorKinds.L},{kind:ConductorKinds.L},{kind:ConductorKinds.E}],
@@ -273,7 +298,12 @@ const CablePresets = {
     family: "PVC singles"
   }
 };
-const bundleHint = (name)=> name.includes('strap') ? 'all L (sleeve as needed)' : 'auto L/N/E';
+const bundleHint = (name)=> {
+  if (name.includes('strap')) return 'all L (sleeve as needed)';
+  if (name.includes('Tails')) return 'L/N fixed 25 mm² + E 16 mm²';
+  if (name.includes('Bonding')) return 'Earth only, default 10 mm²';
+  return 'auto L/N/E';
+};
 
 // Small colour helper for terminal dots
 const termDotFill = (t) => {
@@ -816,6 +846,8 @@ function requiredCSAForTerminal(comp, term, region) {
   const SOCKET_LN = 2.5, SOCKET_E = 1.5;
   const FCU_LN = 2.5, FCU_E = 1.5;
   const COOKER_LN = 6.0, COOKER_E = 2.5; // simplified CPC
+  // UK main tails & main earth (typical DNO 80–100A cut-out): 25 mm² L/N, 16 mm² E
+  const TAILS_LN = 25.0, MAIN_EARTH = 16.0;
 
   switch (comp.type) {
     case ComponentTypes.SOCKET_1G:
@@ -836,8 +868,22 @@ function requiredCSAForTerminal(comp, term, region) {
       return isE ? LIGHT_E : LIGHT_LN;
     // Distribution and connectors have no constraint at the accessory itself
     case ComponentTypes.SUPPLY:
-    case ComponentTypes.CONSUMER_UNIT:
-    case ComponentTypes.CONSUMER_UNIT_SPLIT:
+      // Enforce UK incoming supply sizing expectations
+      if (UK) return isE ? MAIN_EARTH : TAILS_LN;
+      return 0;
+    case ComponentTypes.CONSUMER_UNIT: {
+      // CU supply tails/main earth: enforce only on the supply input pins (named exactly L/N/E)
+      if (UK && (term.name === 'L' || term.name === 'N' || term.name === 'E')) {
+        return term.name === 'E' ? MAIN_EARTH : TAILS_LN;
+      }
+      return 0;
+    }
+    case ComponentTypes.CONSUMER_UNIT_SPLIT: {
+      if (UK && (term.name === 'L' || term.name === 'N' || term.name === 'E')) {
+        return term.name === 'E' ? MAIN_EARTH : TAILS_LN;
+      }
+      return 0;
+    }
     case ComponentTypes.CONNECTOR_L3:
     case ComponentTypes.CONNECTOR_N3:
     case ComponentTypes.CONNECTOR_E3:
@@ -859,7 +905,12 @@ function wireRequiredMinCSA(components, w, region) {
   if (!ta || !tb) return 0;
   const ra = requiredCSAForTerminal(ta.comp, ta.term, region);
   const rb = requiredCSAForTerminal(tb.comp, tb.term, region);
-  return Math.max(ra, rb, 0);
+  let req = Math.max(ra, rb, 0);
+  // Additional per-cable family rules (e.g., bonding minimum)
+  if (region === 'UK' && w?.cableType === 'Bonding' && w?.kind === ConductorKinds.E) {
+    req = Math.max(req, 10.0); // UK main bonding commonly ≥ 10 mm² (can be 16 mm² for some earthing arrangements)
+  }
+  return req;
 }
 
 function isWireUndersized(components, w, region = 'UK') {
@@ -2601,9 +2652,9 @@ export default function App() {
               // Find matching terminals on both components
               const fromTerminal = fromComp.terminals.find(t => t.t === terminalType) || fromComp.terminals.find(t => t.id === from);
               const toTerminal = toComp.terminals.find(t => t.t === terminalType) || toComp.terminals.find(t => t.id === tid);
-              // Size per core (E uses reduced CPC for T&E by default)
+              // Size per core: honor any fixed size on the preset, else derive from bundleSize (with CPC reduction for T&E)
               const lineSize = bundleSize;
-              const coreSize = core.kind === ConductorKinds.E && preset.family === 'T&E' ? cpcSizeForBundle(lineSize) : lineSize;
+              let coreSize = core.fixedSizeMm2 ?? (core.kind === ConductorKinds.E && preset.family === 'T&E' ? cpcSizeForBundle(lineSize) : lineSize);
               const ampacityA = getAmpacity(coreSize);
               const label = `${formatSize(coreSize)} ${preset.family || 'Cable'}`;
 
