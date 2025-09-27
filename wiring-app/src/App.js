@@ -188,6 +188,13 @@ const ComponentTypes = {
   CEILING_ROSE: "CEILING_ROSE",
   // New accessory
   CCU_45A: "CCU_45A",
+  // Outdoor / garden range
+  OUTDOOR_SOCKET_RCD: "OUTDOOR_SOCKET_RCD",
+  OUTDOOR_JUNCTION_IP66: "OUTDOOR_JUNCTION_IP66",
+  GARDEN_LIGHT: "GARDEN_LIGHT",
+  // EV charge points
+  EVSE_1P_7kW: "EVSE_1P_7kW",        // typical 32 A single-phase charger
+  EVSE_3P_11_22kW: "EVSE_3P_11_22kW", // optional: three-phase variant
 };
 
 /** Conductor kinds + render styles */
@@ -291,6 +298,12 @@ const CablePresets = {
     name: "SWA 2C+E (submain)",
     cores: [{kind:ConductorKinds.L},{kind:ConductorKinds.N},{kind:ConductorKinds.E}],
     family: "SWA"
+  },
+  "Garden sub-circuit (SWA)": {
+    name: "Garden sub-circuit (SWA 2C+E)",
+    cores: [{kind:ConductorKinds.L},{kind:ConductorKinds.N},{kind:ConductorKinds.E}],
+    family: "SWA",
+    hint: "Suitable for outdoor runs; consider RCD protection and IP-rated terminations",
   },
   "3C+E Strappers": {
     name: "3C+E strappers (all lives)",
@@ -532,6 +545,62 @@ function makeConnectorL3(x, y) {
     internalLinks: [["L1", "L2"], ["L1", "L3"]],
   };
 }
+// ---- EVSE: 7.2 kW single-phase (32 A), with built-in 6 mA DC detection flag ----
+function makeEVSE1P(x, y, opts = {}) {
+  const tL = { id:newId(), name:"L", t:TerminalTypes.L, dx:10,  dy:20 };
+  const tN = { id:newId(), name:"N", t:TerminalTypes.N, dx:10,  dy:48 };
+  const tE = { id:newId(), name:"E", t:TerminalTypes.E, dx:10,  dy:76 };
+  return {
+    id: newId(),
+    type: ComponentTypes.EVSE_1P_7kW,
+    label: "EV charger (1×32 A, ~7.2 kW)",
+    x, y,
+    state: {
+      // Editable per-instance flags (used by Regulations panel)
+      has6mA: opts.has6mA ?? true,      // EVSE integrates 6 mA DC detection (RDC-DD)
+      earthing: opts.earthing ?? 'PME',  // 'PME' (TN-C-S) or 'TT'
+    },
+    meta: {
+      environment: "outdoor",     // most wallboxes are outdoors
+      ipRating: "IP65",           // typical enclosure rating (adjust if needed)
+      requiresRCD: true,
+      has6mA_DC_Detection: true,  // many chargers integrate RDC-DD per IEC 62955
+      needsDedicatedCircuit: true,
+      needsPENProtection: true,   // PME/Open-PEN mitigation per BS 7671 Sec. 722
+      smartChargeRequired: true   // GB smart charge regs (if “sold” scope applies)
+    },
+    terminals: [tL, tN, tE],
+    internalLinks: [], // handled by external protective devices/RCBO etc.
+  };
+}
+
+// (Optional) three-phase EVSE shell — same meta, 3×L + N + E terminals
+function makeEVSE3P(x, y, opts = {}) {
+  const TL = i => ({ id:newId(), name:`L${i}`, t:TerminalTypes.L, dx:10, dy:10 + i*16 });
+  const tN = { id:newId(), name:"N", t:TerminalTypes.N, dx:10, dy:70 };
+  const tE = { id:newId(), name:"E", t:TerminalTypes.E, dx:10, dy:98 };
+  return {
+    id: newId(),
+    type: ComponentTypes.EVSE_3P_11_22kW,
+    label: "EV charger (3-phase 11/22 kW)",
+    x, y,
+    state: {
+      has6mA: opts.has6mA ?? true,
+      earthing: opts.earthing ?? 'PME',
+    },
+    meta: {
+      environment: "outdoor",
+      ipRating: "IP65",
+      requiresRCD: true,
+      has6mA_DC_Detection: true,
+      needsDedicatedCircuit: true,
+      needsPENProtection: true,
+      smartChargeRequired: true
+    },
+    terminals: [TL(1), TL(2), TL(3), tN, tE],
+    internalLinks: [],
+  };
+}
 
 // ---- Wago‑style connectors (visuals with orange levers) ----
 function makeWago3(kind, x, y) {
@@ -566,6 +635,66 @@ function makeWago5(kind, x, y) {
     y,
     terminals: ts,
     internalLinks: ts.slice(1).map((t) => [ts[0].name, t.name]),
+  };
+}
+
+// ---- Outdoor 13A socket with integral RCD (typical IP66 enclosure) ----
+function makeOutdoorSocketRCD(x, y) {
+  return {
+    id: newId(),
+    type: ComponentTypes.OUTDOOR_SOCKET_RCD,
+    label: "Outdoor socket (RCD, IP66)",
+    x, y,
+    meta: { environment: "outdoor", ipRating: "IP66", requiresRCD: true, rcdIntegral: true },
+    terminals: [
+      { id: newId(), name: "LIN",  t: TerminalTypes.LIN,  dx: 10, dy: 22 },
+      { id: newId(), name: "LOUT", t: TerminalTypes.LOUT, dx: 70, dy: 22 },
+      { id: newId(), name: "NIN",  t: TerminalTypes.NIN,  dx: 10, dy: 62 },
+      { id: newId(), name: "NOUT", t: TerminalTypes.NOUT, dx: 70, dy: 62 },
+      { id: newId(), name: "EIN",  t: TerminalTypes.EIN,  dx: 10, dy: 102 },
+      { id: newId(), name: "EOUT", t: TerminalTypes.EOUT, dx: 70, dy: 102 },
+    ],
+    internalLinks: [
+      // Integral RCD simplified: links present (model detailed RCD later if needed)
+      ["LIN","LOUT"],["NIN","NOUT"],["EIN","EOUT"]
+    ],
+  };
+}
+    
+
+// ---- Outdoor junction box (IP66) for SWA joints etc. ----
+function makeOutdoorJunctionBox(x, y) {
+  const tL =  { id:newId(), name:"L1", t:TerminalTypes.L, dx:10,  dy:20 };
+  const tL2 = { id:newId(), name:"L2", t:TerminalTypes.L, dx:10,  dy:50 };
+  const tN =  { id:newId(), name:"N1", t:TerminalTypes.N, dx:70,  dy:20 };
+  const tN2 = { id:newId(), name:"N2", t:TerminalTypes.N, dx:70,  dy:50 };
+  const tE =  { id:newId(), name:"E1", t:TerminalTypes.E, dx:120, dy:20 };
+  const tE2 = { id:newId(), name:"E2", t:TerminalTypes.E, dx:120, dy:50 };
+  return {
+    id: newId(),
+    type: ComponentTypes.OUTDOOR_JUNCTION_IP66,
+    label: "Outdoor JB (IP66)",
+    x, y,
+    meta: { environment: "outdoor", ipRating: "IP66" },
+    terminals: [tL,tL2,tN,tN2,tE,tE2],
+    internalLinks: [["L1","L2"],["N1","N2"],["E1","E2"]],
+  };
+}
+
+// ---- Garden light (class I luminaire) ----
+function makeGardenLight(x, y) {
+  return {
+    id: newId(),
+    type: ComponentTypes.GARDEN_LIGHT,
+    label: "Garden light",
+    x, y,
+    meta: { environment: "outdoor", class: "I", requiresRCD: true },
+    terminals: [
+      { id: newId(), name: "L", t: TerminalTypes.L, dx: 10, dy: 16 },
+      { id: newId(), name: "N", t: TerminalTypes.N, dx: 10, dy: 46 },
+      { id: newId(), name: "E", t: TerminalTypes.E, dx: 10, dy: 76 },
+    ],
+    internalLinks: [],
   };
 }
 
@@ -854,14 +983,22 @@ function requiredCSAForTerminal(comp, term, region) {
     case ComponentTypes.SOCKET_2G:
     case ComponentTypes.SOCKET_2G_SWITCHED:
     case ComponentTypes.SOCKET_RCD_1G:
+    case ComponentTypes.OUTDOOR_SOCKET_RCD:
       return isE ? SOCKET_E : SOCKET_LN;
     case ComponentTypes.FCU_UNSWITCHED:
     case ComponentTypes.FCU_SWITCHED:
       return isE ? FCU_E : FCU_LN;
     case ComponentTypes.CCU_45A:
       return isE ? COOKER_E : COOKER_LN;
+    case ComponentTypes.EVSE_1P_7kW:
+      // 32 A circuit typically wired in 6.0 mm² T&E; CPC often 2.5 mm² in that cable
+      return isE ? 2.5 : 6.0;
+    case ComponentTypes.EVSE_3P_11_22kW:
+      // training-only: suggest 6–10 mm² depending on run/installation; use 10 mm² here
+      return isE ? 6.0 : 10.0;
     case ComponentTypes.LAMP:
     case ComponentTypes.CEILING_ROSE:
+    case ComponentTypes.GARDEN_LIGHT:
     case ComponentTypes.SWITCH_1WAY:
     case ComponentTypes.SWITCH_2WAY:
     case ComponentTypes.SWITCH_INTERMEDIATE:
@@ -887,6 +1024,7 @@ function requiredCSAForTerminal(comp, term, region) {
     case ComponentTypes.CONNECTOR_L3:
     case ComponentTypes.CONNECTOR_N3:
     case ComponentTypes.CONNECTOR_E3:
+  case ComponentTypes.OUTDOOR_JUNCTION_IP66:
     case ComponentTypes.WAGO_L3:
     case ComponentTypes.WAGO_N3:
     case ComponentTypes.WAGO_E3:
@@ -1510,6 +1648,16 @@ const TOOLBOX_GROUPS = [
   { id: "wE5", label: "Wago 221 — Earth (5‑way)", kind: "wago_E5" },
     ],
   },
+  {
+    id: "outdoor",
+    label: "Outdoor",
+    icon: Icon.Plug,
+    items: [
+      { id: "outdoor_socket_rcd", label: "Outdoor socket (RCD, IP66)", kind: "outdoor_socket_rcd", tags:["RCD","IP66","outdoor"] },
+      { id: "outdoor_jb_ip66", label: "Outdoor JB (IP66)", kind: "outdoor_jb_ip66", tags:["IP66","junction","outdoor"] },
+      { id: "garden_light", label: "Garden light", kind: "garden_light", tags:["requires RCD","outdoor"] },
+    ],
+  },
 ];
 
 const normalise = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
@@ -1628,6 +1776,7 @@ function GroupedToolbox({ onAdd, defaultOpen = ["power","lighting"], denseDefaul
     </div>
   );
 }
+
 
 // ---------- Main React Component ----------
 export default function App() {
@@ -1753,6 +1902,7 @@ export default function App() {
   const LEFT_SECTION_IDS = [
     'toolbox',
     'quick-tests',
+    'ev-charging',
     'wires',
     'cable-bundles',
     'actions',
@@ -1764,6 +1914,7 @@ export default function App() {
     'presets',
     'meter',
     'earth-continuity',
+    'regulations',
   ];
 
   const setCollapsedFor = (ids, value) => {
@@ -1810,6 +1961,9 @@ export default function App() {
       case 'wago_L5': maker = (x,y)=> makeWago5('L',x,y); break;
       case 'wago_N5': maker = (x,y)=> makeWago5('N',x,y); break;
       case 'wago_E5': maker = (x,y)=> makeWago5('E',x,y); break;
+      case 'outdoor_socket_rcd': maker = makeOutdoorSocketRCD; break;
+      case 'outdoor_jb_ip66': maker = makeOutdoorJunctionBox; break;
+      case 'garden_light': maker = makeGardenLight; break;
       default: break;
     }
     if (maker) addComponent(maker);
@@ -3344,6 +3498,25 @@ export default function App() {
             </div>
           </Collapsible>
 
+          {/* EV Charging (quick add) */}
+          <Collapsible id="ev-charging" title="🔌 EV Charging" collapsedMap={collapsed} setCollapsedMap={setCollapsed}>
+            <div className="grid grid-cols-1 gap-2 text-sm">
+              <button
+                className="rounded-md border border-slate-200 bg-white px-3 py-2 text-left hover:bg-slate-50"
+                onClick={()=>addComponent(makeEVSE1P(380, 220))}
+              >
+                EV charger (7.2 kW)
+              </button>
+              <button
+                className="rounded-md border border-slate-200 bg-white px-3 py-2 text-left hover:bg-slate-50"
+                onClick={()=>addComponent(makeEVSE3P(460, 220))}
+                title="Three-phase variant (optional)"
+              >
+                EV charger (3‑phase)
+              </button>
+            </div>
+          </Collapsible>
+
           {/* Wires */}
           <Collapsible id="wires" title="🧵 Wires" collapsedMap={collapsed} setCollapsedMap={setCollapsed}>
             {/* Simulation mode */}
@@ -3487,7 +3660,7 @@ export default function App() {
                       setBundleMode(bundleMode === cableType ? null : cableType);
                       setBundlePending(null);
                     }}
-                    title={`${preset.name} — ${bundleHint(cableType)}`}
+                    title={`${preset.name} — ${preset.hint || bundleHint(cableType)}`}
                   >
                     <div className="flex items-center gap-2">
                       <span className="inline-flex items-center gap-1">
@@ -3859,6 +4032,53 @@ export default function App() {
                   </div>
                 </div>
               )}
+
+              {/* EVSE Inspector - Only when a single EV charger is selected */}
+              {selection.components.length === 1 && (() => {
+                const comp = components.find(c => c.id === selection.components[0]);
+                if (!comp) return null;
+                if (comp.type !== ComponentTypes.EVSE_1P_7kW && comp.type !== ComponentTypes.EVSE_3P_11_22kW) return null;
+                const has6mA = comp.state?.has6mA ?? true;
+                const earthing = comp.state?.earthing ?? 'PME';
+                return (
+                  <div className="bg-emerald-50 rounded-lg p-2">
+                    <h4 className="text-xs font-semibold text-emerald-700 uppercase tracking-wide mb-2">🚗 EV Charger</h4>
+                    <div className="space-y-2 text-xs">
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          className="accent-emerald-600"
+                          checked={has6mA}
+                          onChange={(e) => {
+                            const checked = e.target.checked;
+                            pushHistory();
+                            setComponents(cs => cs.map(c => c.id === comp.id ? { ...c, state: { ...c.state, has6mA: checked } } : c));
+                          }}
+                        />
+                        <span>Integral 6 mA DC detection (RDC-DD)</span>
+                      </label>
+                      <label className="flex items-center gap-2">
+                        <span className="font-medium">Earthing:</span>
+                        <select
+                          className="border rounded px-2 py-1"
+                          value={earthing}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            pushHistory();
+                            setComponents(cs => cs.map(c => c.id === comp.id ? { ...c, state: { ...c.state, earthing: val } } : c));
+                          }}
+                        >
+                          <option value="PME">PME (TN-C-S)</option>
+                          <option value="TT">TT</option>
+                        </select>
+                      </label>
+                      <div className="text-[11px] text-slate-600">
+                        These flags influence the Regulations tags: Type B vs Type A+RDC-DD, and Open-PEN vs TT notes.
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Help */}
               <div className="bg-purple-50 rounded-lg p-2">
@@ -5035,6 +5255,7 @@ export default function App() {
   </div>
 
   {/* Right panel: Checks, Presets, Save/Load, Meter, Lamps, Earth Continuity */}
+  <div className="flex lg:col-start-3 lg:col-span-1">
       <div
         className="lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] overflow-y-auto lg:pl-2 overscroll-contain backdrop-blur rounded-2xl shadow-sm p-4 w-full min-w-0 lg:w-[360px] lg:min-w-[360px] lg:col-start-3 self-start themed-panel"
         role="region"
@@ -5401,11 +5622,133 @@ export default function App() {
             </div>
           </Collapsible>
 
+          {/* Regulations */}
+          <Collapsible id="regulations" title="📜 Regulations (Part P & Certification)" collapsedMap={collapsed} setCollapsedMap={setCollapsed}>
+            <div className="space-y-2 text-sm">
+              {/* Render the same rows from RegulationsPanel inline */}
+              {(() => {
+                const hasNewCircuit = (() => {
+                  const hasCU = components.some(c => c.type === ComponentTypes.CONSUMER_UNIT || c.type === ComponentTypes.CONSUMER_UNIT_SPLIT);
+                  const hasLoads = components.some(c => [
+                    ComponentTypes.SOCKET_1G, ComponentTypes.SOCKET_2G, ComponentTypes.SOCKET_2G_SWITCHED, ComponentTypes.SOCKET_RCD_1G,
+                    ComponentTypes.OUTDOOR_SOCKET_RCD, ComponentTypes.LAMP, ComponentTypes.GARDEN_LIGHT
+                  ].includes(c.type));
+                  return hasCU && hasLoads;
+                })();
+                const hasCUReplacement = components.some(c => c.type === ComponentTypes.CONSUMER_UNIT || c.type === ComponentTypes.CONSUMER_UNIT_SPLIT);
+                const outdoorItems = components.filter(c => c.meta?.environment === 'outdoor');
+
+                const rows = [];
+                if (hasCUReplacement) {
+                  rows.push({
+                    title: 'Consumer unit present',
+                    tags: [{ text: 'Likely notifiable (Part P)', kind: 'notifiable' }],
+                    kind: 'notifiable',
+                    notes: 'CU installation/replacement typically requires notification and certification.',
+                  });
+                }
+                if (hasNewCircuit) {
+                  rows.push({
+                    title: 'New circuit detected (heuristic)',
+                    tags: [{ text: 'Notifiable (Part P)', kind: 'notifiable' }],
+                    kind: 'notifiable',
+                    notes: 'Installing a new circuit is generally notifiable. Use a registered electrician or notify building control.',
+                  });
+                }
+                if (outdoorItems.length) {
+                  outdoorItems.forEach(c => {
+                    rows.push({
+                      title: `${c.label} — outdoor`,
+                      tags: [
+                        { text: c.meta?.requiresRCD ? 'RCD required' : 'RCD check', kind: 'certify' },
+                        { text: c.meta?.ipRating || 'IP rating check', kind: 'info' },
+                        { text: 'Certificate', kind: 'certify' },
+                      ],
+                      kind: 'certify',
+                      notes: 'Outdoor equipment needs suitable IP rating, RCD protection and correct cable type (e.g., SWA or protected route). Notifiable if part of a new circuit; alterations to existing circuits usually need a Minor Electrical Installation Works Certificate.',
+                    });
+                  });
+                }
+                // EV-specific checks
+                const evUnits = components.filter(c => c.type === ComponentTypes.EVSE_1P_7kW || c.type === ComponentTypes.EVSE_3P_11_22kW);
+                if (evUnits.length) {
+                  evUnits.forEach(ev => {
+                    const tags = [];
+                    tags.push({ text: 'Notifiable (Part P)', kind: 'notifiable' }); // likely new circuit
+                    const has6mA = ev.state?.has6mA ?? ev.meta?.has6mA_DC_Detection ?? false;
+                    if (has6mA) {
+                      tags.push({ text: 'RCD Type A + RDC-DD (6 mA)', kind: 'certify' });
+                    } else {
+                      tags.push({ text: 'Type B RCD or Type A + RDC-PD', kind: 'certify' });
+                    }
+                    const earthing = (ev.state?.earthing || 'PME');
+                    if (earthing === 'PME') {
+                      tags.push({ text: 'Open-PEN protection', kind: 'certify' });
+                    } else {
+                      tags.push({ text: 'TT arrangement (verify Ra)', kind: 'certify' });
+                    }
+                    if (ev.meta?.ipRating) tags.push({ text: ev.meta.ipRating, kind: 'info' });
+                    if (ev.meta?.smartChargeRequired) tags.push({ text: 'Smart-charge regs', kind: 'info' });
+                    rows.push({
+                      title: `${ev.label}`,
+                      tags,
+                      kind: 'certify',
+                      notes: 'Dedicated circuit with appropriate cable size and breaker. Provide 30 mA RCD protection (Type A with integral 6 mA DC detection in the EVSE, or Type B/Type A+RDC-PD). For PME supplies, provide Open-PEN protection or alternative earthing arrangement. Outdoor rating and isolation required; consider load management/CT clamp.',
+                    });
+                  });
+                }
+                const hasSocketsOrLights = components.some(c => [
+                  ComponentTypes.SOCKET_1G, ComponentTypes.SOCKET_2G, ComponentTypes.SOCKET_2G_SWITCHED, ComponentTypes.OUTDOOR_SOCKET_RCD,
+                  ComponentTypes.LAMP, ComponentTypes.GARDEN_LIGHT
+                ].includes(c.type));
+                if (hasSocketsOrLights && !hasNewCircuit) {
+                  rows.push({
+                    title: 'Alterations to existing circuits',
+                    tags: [{ text: 'Minor works certificate', kind: 'certify' }],
+                    kind: 'certify',
+                    notes: 'Additions/alterations generally require testing and certification but may not be notifiable if not in special locations or forming a new circuit.',
+                  });
+                }
+
+                if (!rows.length) {
+                  return (
+                    <p className="text-xs text-slate-500">No regulatory flags detected. Ensure compliance with BS 7671 and keep appropriate records.</p>
+                  );
+                }
+                const tagStyle = (kind) => kind === 'notifiable' ? 'bg-rose-100 text-rose-700' : kind === 'certify' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700';
+                return (
+                  <ul className="space-y-2">
+                    {rows.map((r, i) => (
+                      <li key={i} className="rounded-lg border border-slate-200 p-2">
+                        <div className="flex items-center justify-between">
+                          <div className="text-sm font-medium text-slate-800">{r.title}</div>
+                          <div className="flex gap-1 flex-wrap">
+                            {r.tags.map((t, idx) => {
+                              const text = typeof t === 'string' ? t : t.text;
+                              const kind = typeof t === 'string' ? r.kind : t.kind;
+                              return (
+                                <span key={idx} className={`px-2 py-0.5 rounded text-xs font-medium ${tagStyle(kind)}`}>{text}</span>
+                              );
+                            })}
+                          </div>
+                        </div>
+                        {r.notes && <p className="mt-1 text-xs text-slate-500">{r.notes}</p>}
+                      </li>
+                    ))}
+                  </ul>
+                );
+              })()}
+
+              <p className="mt-1 text-[11px] text-slate-400">Training aid only — verify against BS 7671 and local building control guidance.</p>
+            </div>
+          </Collapsible>
+
           <div className="pt-2 text-xs text-gray-600">
             Harmonised colours (UK): Line = brown, Neutral = blue, Earth/CPC = green‑yellow.
           </div>
         </div>
       </div>
+    </div>
     </div>
 
       {/* You Died Modal */}
@@ -5527,6 +5870,12 @@ try {
   const we5_1 = termIdByName(wE5, 'E1');
   const we5_5 = termIdByName(wE5, 'E5');
   console.assert((adjWE5.get(we5_1) || new Set()).has(we5_5), 'Wago E5 should link E1-E5');
+
+  // Test 8: EVSE factories basic shape
+  const ev1 = makeEVSE1P(0, 0);
+  console.assert(ev1.terminals.length === 3, 'EVSE 1P should have 3 terminals (L,N,E)');
+  const ev3 = makeEVSE3P(0, 0);
+  console.assert(ev3.terminals.length === 5, 'EVSE 3P should have 5 terminals (L1,L2,L3,N,E)');
 } catch (err) {
   // eslint-disable-next-line no-console
   console.error("Self‑tests failed:", err);
