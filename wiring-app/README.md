@@ -1,70 +1,87 @@
-# Getting Started with Create React App
+<p align="center">
+  <img src="./Banner.png" alt="WireLab Banner" />
+</p>
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+# WireLab
 
-## Available Scripts
+**WireLab** is an interactive simulator for exploring **UK domestic wiring practices**.  
 
-In the project directory, you can run:
+I originally built it just to test my own understanding while replacing some sockets at home. Two days later, it grew into a complete browser-based wiring lab.  
 
-### `npm start`
+👉 **Try it live here:** [https://giln0ckie.github.io/WireLab/](https://giln0ckie.github.io/WireLab/)  
+*(Best viewed on desktop — mobile support coming soon.)*  
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+---
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## ✨ Features
 
-### `npm test`
+### Realistic wiring system  
+- Harmonised **Line, Neutral, and Earth** colours  
+- Conductor palette with **recolouring, thickness adjustments, and visibility toggles**  
+- Wire layering (send to back/bring forward) for clarity  
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+### Component library  
+- Drag-and-drop supply, lamps, sockets (1G, 2G, switched, RCD), ceiling roses, switches (1-way, 2-way, intermediate)  
+- Consumer units (all-MCB and split load), FCUs, cooker control units  
+- Connector blocks and Wago-style lever connectors  
 
-### `npm run build`
+### Interactive tools  
+- **Voltage pen** → scan terminals to check for “live” conductors (like a non-contact tester)  
+- **Meter tool** → measure resistance or voltage between two terminals  
+- **Scissors** → cut wires to simulate breaks  
+- **Snap-to-grid**, drag-to-move components, and selection highlights  
+- Keyboard and pointer accessibility for switches and terminals  
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+### Simulation & testing  
+- Built-in rules for wire sizing, resistance, and ampacity  
+- Live **resistance and voltage measurement** via the meter  
+- Fault simulation: open circuits, high-resistance joints, broken neutrals, incorrect spurs  
+- Preset circuits like *Good ring*, *Broken neutral at lamp*, and *Spur off spur*  
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+---
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+## 🕹️ How to Use
 
-### `npm run eject`
+1. **Add components**  
+   - Select from the palette on the left  
+   - Place them on the grid and drag to move  
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+2. **Wire them together**  
+   - Click one terminal, then another to connect  
+   - Use the wire palette for colour/thickness/visibility  
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+3. **Test your circuits**  
+   - Use the **voltage pen** to scan for “live” conductors  
+   - Use the **meter** to measure between two points (voltage/resistance)  
+   - Use the **scissors** to cut a wire and simulate a break  
+   - Load **presets** for ready-made working and faulty examples  
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+4. **Experiment & learn**  
+   - Build a compliant ring final  
+   - Try a spur off a spur and see why it fails  
+   - Break a neutral and use the meter to diagnose  
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+---
 
-## Learn More
+## ⚠️ Disclaimer
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+WireLab is **purely educational and for fun**.  
+It is **not** a substitute for electrical training, professional qualifications, or BS 7671 compliance.  
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+---
 
-### Code Splitting
+## 🛠 Tech Stack
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+- **React** for UI & logic  
+- **SVG** for interactive floorplan, wiring, and components  
+- Custom simulation engine (resistance, ampacity, fault logic)  
 
-### Analyzing the Bundle Size
+---
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+## 👤 Author
 
-### Making a Progressive Web App
+<p align="center">
+  <img src="https://avatars.githubusercontent.com/u/234588565?v=4" alt="Profile picture" width="120" height="120" style="border-radius:50%" />
+</p>
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+Made by **Giln0ckie**, supported by **AI Agents**.  
