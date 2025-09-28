@@ -1818,6 +1818,10 @@ function GroupedToolbox({ onAdd, defaultOpen = ["power","lighting"], denseDefaul
 // ---------- Main React Component ----------
 export default function App() {
   // --- All state declarations ---
+  const DISCLAIMER_KEY = 'wirelab_disclaimer_v1';
+  const [ackDisclaimer, setAckDisclaimer] = useState(() => {
+    try { return localStorage.getItem(DISCLAIMER_KEY) === 'yes'; } catch { return false; }
+  });
   const [components, setComponents] = useState(() => [makeSupply(40, 40), makeLamp(360, 40)]);
   const [wires, setWires] = useState([]); // wires: {id, a, b, kind}
   const [pending, setPending] = useState(null); // terminalId | null
@@ -3447,6 +3451,28 @@ export default function App() {
   `;
   return (
     <div className={`min-h-screen ${darkMode ? 'app-dark' : 'app-light'}`} style={{ background: 'var(--bg)', color: 'var(--text)' }}>
+      {/* Disclaimer Gate */}
+      {!ackDisclaimer && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.55)' }}>
+          <div className="max-w-xl w-full rounded-2xl shadow-lg p-5 themed-panel" style={{ background: 'var(--panel-bg)', boxShadow: '0 0 0 1px var(--panel-border)' }}>
+            <h2 className="text-lg font-semibold mb-2">Safety & Disclaimer</h2>
+            <div className="text-sm text-slate-700 space-y-2">
+              <p>This app is a fun, educational, interactive tool only. It simplifies complex topics and may be inaccurate or incomplete.</p>
+              <p><strong>Do not rely on it for real work.</strong> Electrical work can be dangerous and is regulated. If in doubt, always consult a qualified, certified professional and follow local regulations (e.g., BS 7671, Building Regulations Part P).</p>
+            </div>
+            <div className="mt-4 flex items-center justify-end gap-2">
+              <button
+                className="rounded border neutral-btn bg-white px-3 py-1.5 text-sm"
+                onClick={() => { window.location.href = 'https://niceic.com/'; }}
+              >Decline</button>
+              <button
+                className="rounded border border-green-600 bg-green-600 text-white px-3 py-1.5 text-sm"
+                onClick={() => { try { localStorage.setItem('wirelab_disclaimer_v1', 'yes'); } catch {} setAckDisclaimer(true); }}
+              >I Understand</button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Custom CSS for slider styling and theme */}
       <style dangerouslySetInnerHTML={{ __html: sliderStyle + "\n" + cursorCSS + "\n" + themeCSS }} />
       
