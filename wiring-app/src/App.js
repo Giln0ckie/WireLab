@@ -737,7 +737,7 @@ function makeConsumerUnit(x, y, opts = {}) {
     nBar.push(tn); eBar.push(te); terms.push(tn, te);
   }
 
-  const wayState = ratings.map(r => ({ closed:true, rating:r }));
+  const wayState = ratings.map(r => ({ closed:true, rating:r, isExisting: true }));
 
   // internals: common bars + feed each LOUT when the MCB is closed
   const internalLinks = (self)=>{
@@ -796,7 +796,7 @@ function makeConsumerUnitSplit(x, y, opts = {}) {
     eBar.push({ id: newId(), name: `E${i+1}`, t: TerminalTypes.E, dx, dy: 303 });
   }
   terms.push(...nBarA, ...nBarB, ...eBar);
-  const wayState = ratings.map((r, i) => ({ closed: true, rating: r, rcbo: rcboFlags[i], label: labels[i] }));
+  const wayState = ratings.map((r, i) => ({ closed: true, rating: r, rcbo: rcboFlags[i], label: labels[i], isExisting: true }));
   const state = { mainOn: true, rcdAOn: true, rcdBOn: true, ways: wayState };
   const internalLinks = (self) => {
     const links = [];
@@ -1267,9 +1267,38 @@ function bfsSet(g, startId) {
   seen.add(startId);
   while (q.length) {
     const v = q.shift();
-    for (const {to:u} of g.get(v) || []) if (!seen.has(u)) { seen.add(u); q.push(u); }
+    const neigh = g.get(v) || [];
+    for (const edge of neigh) {
+      const u = (typeof edge === 'string') ? edge : (edge && typeof edge === 'object' ? (edge.to ?? edge) : edge);
+      if (u && !seen.has(u)) { seen.add(u); q.push(u); }
+    }
   }
   return seen;
+}
+
+// Map a component to a CU way by line-only reachability. Returns { cuId, wayIndex } or null.
+function findCircuitForComponent(components, wires, comp) {
+  if (!comp) return null;
+  const gL = buildTypedSubgraph(components, wires, LineTermTypes);
+  const compLineTerms = comp.terminals.filter((t) => LineTermTypes.has(t.t)).map((t) => t.id);
+  if (!compLineTerms.length) return null;
+  const reach = new Set();
+  for (const tid of compLineTerms) {
+    const r = bfsSet(gL, tid);
+    for (const x of r) reach.add(x);
+  }
+  for (const c of components) {
+    if (c.type !== ComponentTypes.CONSUMER_UNIT && c.type !== ComponentTypes.CONSUMER_UNIT_SPLIT) continue;
+    const wayTerms = c.terminals.filter((t) => String(t.name).startsWith("LOUT"));
+    for (const t of wayTerms) {
+      if (reach.has(t.id)) {
+        const m = /LOUT(\d+)/.exec(t.name);
+        const wayIndex = m ? (parseInt(m[1], 10) - 1) : null;
+        return { cuId: c.id, wayIndex };
+      }
+    }
+  }
+  return null;
 }
 
 function degreeIn(g, nodeId) {
@@ -1910,7 +1939,6 @@ export default function App() {
   const LEFT_SECTION_IDS = [
     'toolbox',
     'quick-tests',
-    'ev-charging',
     'wires',
     'cable-bundles',
     'actions',
@@ -3508,24 +3536,7 @@ export default function App() {
             </div>
           </Collapsible>
 
-          {/* EV Charging (quick add) */}
-          <Collapsible id="ev-charging" title="🔌 EV Charging" collapsedMap={collapsed} setCollapsedMap={setCollapsed}>
-            <div className="grid grid-cols-1 gap-2 text-sm">
-              <button
-                className="rounded-md border border-slate-200 bg-white px-3 py-2 text-left hover:bg-slate-50"
-                onClick={()=>addComponent(makeEVSE1P(380, 220))}
-              >
-                EV charger (7.2 kW)
-              </button>
-              <button
-                className="rounded-md border border-slate-200 bg-white px-3 py-2 text-left hover:bg-slate-50"
-                onClick={()=>addComponent(makeEVSE3P(460, 220))}
-                title="Three-phase variant (optional)"
-              >
-                EV charger (3‑phase)
-              </button>
-            </div>
-          </Collapsible>
+          
 
           {/* Wires */}
           <Collapsible id="wires" title="🧵 Wires" collapsedMap={collapsed} setCollapsedMap={setCollapsed}>
@@ -4043,6 +4054,51 @@ export default function App() {
                 </div>
               )}
 
+              {/* Component Properties */}
+              {selection.components.length === 1 && (() => {
+                const comp = components.find(c => c.id === selection.components[0]);
+                if (!comp) return null;
+                const installed = comp.meta?.installed ?? 'new';
+                const circuit = findCircuitForComponent(components, wires, comp);
+                return (
+                  <div className="bg-slate-50 rounded-lg p-2">
+                    <h4 className="text-xs font-semibold text-slate-700 uppercase tracking-wide mb-2">🧩 Component</h4>
+                    <div className="space-y-2 text-xs">
+                      <div className="grid grid-cols-[auto_1fr] items-center gap-2">
+                        <span className="text-slate-600">Installation:</span>
+                        <select
+                          className="border rounded px-2 py-1"
+                          value={installed}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            pushHistory();
+                            setComponents(cs => cs.map(c => c.id === comp.id ? { ...c, meta: { ...(c.meta || {}), installed: val } } : c));
+                          }}
+                        >
+                          <option value="new">New (to be installed)</option>
+                          <option value="existing">Existing (pre-installed)</option>
+                        </select>
+                      </div>
+                      {circuit && (
+                        <div className="text-slate-600">
+                          <span className="font-medium">Circuit:</span>{' '}
+                          <span>
+                            {(() => {
+                              const cu = components.find(c => c.id === circuit.cuId);
+                              const way = (circuit.wayIndex != null) ? `Way ${circuit.wayIndex + 1}` : 'Unknown way';
+                              return `${cu?.label || 'Consumer Unit'} — ${way}`;
+                            })()}
+                          </span>
+                        </div>
+                      )}
+                      <div className="text-[11px] text-slate-500">
+                        Unset metadata defaults to “new”. Mark pre-existing items as Existing.
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
               {/* EVSE Inspector - Only when a single EV charger is selected */}
               {selection.components.length === 1 && (() => {
                 const comp = components.find(c => c.id === selection.components[0]);
@@ -4157,6 +4213,12 @@ export default function App() {
           disabled={!redoStack.length}
           className="rounded border neutral-btn bg-white px-2 py-1 text-xs disabled:opacity-50"
         >↷ Redo</button>
+        <button
+          title="Delete selected components/wires"
+          onClick={removeSelected}
+          disabled={selection.components.length === 0 && selection.wires.length === 0}
+          className="rounded border neutral-btn bg-white px-2 py-1 text-xs disabled:opacity-50"
+        >🗑️ Delete</button>
         <button
           title="Restart circuit (supply + lamp)"
           onClick={() => {
@@ -5637,33 +5699,70 @@ export default function App() {
             <div className="space-y-2 text-sm">
               {/* Render the same rows from RegulationsPanel inline */}
               {(() => {
-                const hasNewCircuit = (() => {
-                  const hasCU = components.some(c => c.type === ComponentTypes.CONSUMER_UNIT || c.type === ComponentTypes.CONSUMER_UNIT_SPLIT);
-                  const hasLoads = components.some(c => [
-                    ComponentTypes.SOCKET_1G, ComponentTypes.SOCKET_2G, ComponentTypes.SOCKET_2G_SWITCHED, ComponentTypes.SOCKET_RCD_1G,
-                    ComponentTypes.OUTDOOR_SOCKET_RCD, ComponentTypes.LAMP, ComponentTypes.GARDEN_LIGHT
-                  ].includes(c.type));
-                  return hasCU && hasLoads;
-                })();
-                const hasCUReplacement = components.some(c => c.type === ComponentTypes.CONSUMER_UNIT || c.type === ComponentTypes.CONSUMER_UNIT_SPLIT);
+                const hasCU = components.some(c => c.type === ComponentTypes.CONSUMER_UNIT || c.type === ComponentTypes.CONSUMER_UNIT_SPLIT);
                 const outdoorItems = components.filter(c => c.meta?.environment === 'outdoor');
 
                 const rows = [];
-                if (hasCUReplacement) {
+
+                // --- Circuit usage mapping (only loads) ---
+                const LOAD_TYPES = new Set([
+                  ComponentTypes.SOCKET_1G, ComponentTypes.SOCKET_2G, ComponentTypes.SOCKET_2G_SWITCHED, ComponentTypes.SOCKET_RCD_1G,
+                  ComponentTypes.OUTDOOR_SOCKET_RCD, ComponentTypes.LAMP, ComponentTypes.GARDEN_LIGHT,
+                  ComponentTypes.CEILING_ROSE,
+                  ComponentTypes.EVSE_1P_7kW, ComponentTypes.EVSE_3P_11_22kW
+                ]);
+                const loadsByWay = new Map(); // key: `${cuId}:${wayIndex}` -> { cu, wayIndex, comps:[] }
+                components.forEach(c => {
+                  if (!LOAD_TYPES.has(c.type)) return;
+                  const hit = findCircuitForComponent(components, wires, c);
+                  if (!hit) return;
+                  const key = `${hit.cuId}:${hit.wayIndex}`;
+                  if (!loadsByWay.has(key)) {
+                    const cu = components.find(x => x.id === hit.cuId);
+                    loadsByWay.set(key, { cu, wayIndex: hit.wayIndex, comps: [] });
+                  }
+                  loadsByWay.get(key).comps.push(c);
+                });
+
+                // Flags for top-level summary
+                let anyNewCircuit = false;
+                let anyMinorWorks = false;
+
+                // Per-way rows + toggle: "Existing circuit?"
+                for (const { cu, wayIndex, comps: wayComps } of loadsByWay.values()) {
+                  if (!cu) continue;
+                  const wayState = cu?.state?.ways?.[wayIndex];
+                  const isExisting = wayState?.isExisting !== false; // default true
+
                   rows.push({
-                    title: 'Consumer unit present',
-                    tags: [{ text: 'Likely notifiable (Part P)', kind: 'notifiable' }],
-                    kind: 'notifiable',
-                    notes: 'CU installation/replacement typically requires notification and certification.',
+                    title: `${cu.label || 'Consumer Unit'} — Way ${wayIndex + 1}`,
+                    tags: [{ text: isExisting ? 'Existing circuit' : 'New circuit', kind: isExisting ? 'info' : 'notifiable' }],
+                    kind: isExisting ? 'info' : 'notifiable',
+                    notes: (
+                      <label className="text-xs flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={isExisting}
+                          onChange={(e) => {
+                            pushHistory();
+                            updateComponent(cu.id, prev => {
+                              const newWays = [...(prev.state?.ways || [])];
+                              newWays[wayIndex] = { ...(newWays[wayIndex] || {}), isExisting: e.target.checked };
+                              return { ...prev, state: { ...prev.state, ways: newWays } };
+                            });
+                          }}
+                        />
+                        Existing circuit (pre-installed)
+                      </label>
+                    )
                   });
-                }
-                if (hasNewCircuit) {
-                  rows.push({
-                    title: 'New circuit detected (heuristic)',
-                    tags: [{ text: 'Notifiable (Part P)', kind: 'notifiable' }],
-                    kind: 'notifiable',
-                    notes: 'Installing a new circuit is generally notifiable. Use a registered electrician or notify building control.',
-                  });
+
+                  if (!isExisting) anyNewCircuit = true; // Used way marked as new → Notifiable
+
+                  if (isExisting) {
+                    const hasNewComponent = wayComps.some(c => (c.meta?.installed || 'new') !== 'existing');
+                    if (hasNewComponent) anyMinorWorks = true; // additions/alterations on existing circuit
+                  }
                 }
                 if (outdoorItems.length) {
                   outdoorItems.forEach(c => {
@@ -5707,16 +5806,29 @@ export default function App() {
                     });
                   });
                 }
-                const hasSocketsOrLights = components.some(c => [
-                  ComponentTypes.SOCKET_1G, ComponentTypes.SOCKET_2G, ComponentTypes.SOCKET_2G_SWITCHED, ComponentTypes.OUTDOOR_SOCKET_RCD,
-                  ComponentTypes.LAMP, ComponentTypes.GARDEN_LIGHT
-                ].includes(c.type));
-                if (hasSocketsOrLights && !hasNewCircuit) {
+                if (!anyNewCircuit && anyMinorWorks) {
                   rows.push({
                     title: 'Alterations to existing circuits',
                     tags: [{ text: 'Minor works certificate', kind: 'certify' }],
                     kind: 'certify',
                     notes: 'Additions/alterations generally require testing and certification but may not be notifiable if not in special locations or forming a new circuit.',
+                  });
+                }
+
+                // Top-level summary if nothing else produced it
+                if (hasCU && anyNewCircuit) {
+                  rows.unshift({
+                    title: 'New circuit present',
+                    tags: [{ text: 'Notifiable (Part P)', kind: 'notifiable' }],
+                    kind: 'notifiable',
+                    notes: 'Installing a new circuit is generally notifiable. Use a registered electrician or notify building control.',
+                  });
+                } else if (hasCU && !anyNewCircuit && !anyMinorWorks) {
+                  rows.unshift({
+                    title: 'Consumer unit present',
+                    tags: [{ text: 'No new circuits', kind: 'info' }],
+                    kind: 'info',
+                    notes: 'Ensure BS 7671 compliance and keep appropriate records.',
                   });
                 }
 
@@ -5742,10 +5854,54 @@ export default function App() {
                             })}
                           </div>
                         </div>
-                        {r.notes && <p className="mt-1 text-xs text-slate-500">{r.notes}</p>}
+                        {r.notes && (typeof r.notes === 'string' ? (
+                          <p className="mt-1 text-xs text-slate-500">{r.notes}</p>
+                        ) : (
+                          <div className="mt-1 text-xs text-slate-500">{r.notes}</div>
+                        ))}
                       </li>
                     ))}
                   </ul>
+                );
+              })()}
+
+              {/* Quick list to toggle component "Pre-installed" status */}
+              {(() => {
+                const candidateLoads = components.filter(c =>
+                  [ComponentTypes.LAMP, ComponentTypes.CEILING_ROSE,
+                   ComponentTypes.SOCKET_1G, ComponentTypes.SOCKET_2G, ComponentTypes.SOCKET_2G_SWITCHED, ComponentTypes.SOCKET_RCD_1G,
+                   ComponentTypes.OUTDOOR_SOCKET_RCD, ComponentTypes.GARDEN_LIGHT,
+                   ComponentTypes.EVSE_1P_7kW, ComponentTypes.EVSE_3P_11_22kW].includes(c.type)
+                ).slice(0, 8);
+                if (!candidateLoads.length) return null;
+                return (
+                  <div className="mt-3">
+                    <div className="text-xs font-semibold text-slate-700 mb-1">Mark loads as pre-installed</div>
+                    <ul className="space-y-1">
+                      {candidateLoads.map(c => {
+                        const installed = c.meta?.installed || 'new';
+                        return (
+                          <li key={c.id} className="text-xs flex items-center justify-between">
+                            <span className="text-slate-700 truncate max-w-[10rem]">{c.label}</span>
+                            <label className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                checked={installed === 'existing'}
+                                onChange={(e)=> {
+                                  pushHistory();
+                                  updateComponent(c.id, prev => ({
+                                    ...prev,
+                                    meta: { ...(prev.meta || {}), installed: e.target.checked ? 'existing' : 'new' }
+                                  }));
+                                }}
+                              />
+                              Pre-installed
+                            </label>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
                 );
               })()}
 
