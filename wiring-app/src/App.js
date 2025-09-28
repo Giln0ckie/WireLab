@@ -339,6 +339,8 @@ const compStroke = (type) => {
 // Terminal dot with optional probe highlight
 function Terminal({terminal: t, onClick, probeA, probeB}) {
   const isProbe = t.id === probeA || t.id === probeB;
+  const labelX = t.dx + 12;
+  const labelY = t.dy;
   return (
     <g
       role="button"
@@ -348,10 +350,14 @@ function Terminal({terminal: t, onClick, probeA, probeB}) {
       aria-label={`${t.name} terminal`}
       style={{cursor:'pointer'}}>
       {isProbe && (
-        <circle cx={t.dx} cy={t.dy} r={9} fill="none" stroke="#111827" strokeOpacity="0.35" />
+        <circle cx={t.dx} cy={t.dy} r={10} fill="none" stroke="#111827" strokeOpacity="0.35" />
       )}
-      <circle cx={t.dx} cy={t.dy} r={6} fill={termDotFill(t.t)} stroke="#111827" />
-      <text x={t.dx+10} y={t.dy+4} fontSize={11} fill="#374151">{t.name}</text>
+      {/* subtle halo for contrast over busy backgrounds */}
+      <circle cx={t.dx} cy={t.dy} r={8} fill="#ffffff" fillOpacity={0.9} stroke="#9ca3af" strokeWidth={1} />
+      {/* core */}
+      <circle cx={t.dx} cy={t.dy} r={6} fill={termDotFill(t.t)} stroke="#111827" strokeWidth={1.5} />
+      {/* label */}
+      <text x={labelX} y={labelY} fontSize={11} fill="#374151" alignmentBaseline="middle">{t.name}</text>
     </g>
   );
 };
@@ -647,12 +653,13 @@ function makeOutdoorSocketRCD(x, y) {
     x, y,
     meta: { environment: "outdoor", ipRating: "IP66", requiresRCD: true, rcdIntegral: true },
     terminals: [
-      { id: newId(), name: "LIN",  t: TerminalTypes.LIN,  dx: 10, dy: 22 },
-      { id: newId(), name: "LOUT", t: TerminalTypes.LOUT, dx: 70, dy: 22 },
-      { id: newId(), name: "NIN",  t: TerminalTypes.NIN,  dx: 10, dy: 62 },
-      { id: newId(), name: "NOUT", t: TerminalTypes.NOUT, dx: 70, dy: 62 },
-      { id: newId(), name: "EIN",  t: TerminalTypes.EIN,  dx: 10, dy: 102 },
-      { id: newId(), name: "EOUT", t: TerminalTypes.EOUT, dx: 70, dy: 102 },
+      // Faceplate drawn at width 160; place terminals just outside (-8 / 168)
+      { id: newId(), name: "LIN",  t: TerminalTypes.LIN,  dx: -8,   dy: 22 },
+      { id: newId(), name: "LOUT", t: TerminalTypes.LOUT, dx: 168,  dy: 22 },
+      { id: newId(), name: "NIN",  t: TerminalTypes.NIN,  dx: -8,   dy: 62 },
+      { id: newId(), name: "NOUT", t: TerminalTypes.NOUT, dx: 168,  dy: 62 },
+      { id: newId(), name: "EIN",  t: TerminalTypes.EIN,  dx: -8,   dy: 102 },
+      { id: newId(), name: "EOUT", t: TerminalTypes.EOUT, dx: 168,  dy: 102 },
     ],
     internalLinks: [
       // Integral RCD simplified: links present (model detailed RCD later if needed)
@@ -701,12 +708,12 @@ function makeGardenLight(x, y) {
 // === Consumer Unit (all-MCB) — tidy layout ===
 function makeConsumerUnit(x, y, opts = {}) {
   // --- layout constants (keep in sync with renderer) ---
-  const BOX_W = 220, BOX_H = 260;
+  const BOX_W = 240, BOX_H = 300;
   const WAY_Y0 = 56;          // first breaker row Y
-  const WAY_SP = 14;          // per-row spacing
-  const LOUT_X = 190;         // line-out pins at right edge
-  const N_BAR_Y = 210;        // neutral bar Y
-  const E_BAR_Y = 235;        // earth bar Y
+  const WAY_SP = 18;          // per-row spacing (more breathing room)
+  const LOUT_X = BOX_W - 30;  // line-out pins near right edge
+  const N_BAR_Y = 244;        // neutral bar Y
+  const E_BAR_Y = 268;        // earth bar Y
   const BAR_DX = 14;          // horizontal spacing along bars
 
   const ways = Math.max(2, Math.min(20, opts.ways ?? 10));
@@ -833,12 +840,13 @@ function makeSocket1G(x, y) {
   label: "1‑gang socket",
     x, y,
     terminals: [
-      { id: newId(), name: "LIN",  t: TerminalTypes.LIN,  dx: 10, dy: 22 },
-      { id: newId(), name: "LOUT", t: TerminalTypes.LOUT, dx: 70, dy: 22 },
-      { id: newId(), name: "NIN",  t: TerminalTypes.NIN,  dx: 10, dy: 62 },
-      { id: newId(), name: "NOUT", t: TerminalTypes.NOUT, dx: 70, dy: 62 },
-      { id: newId(), name: "EIN",  t: TerminalTypes.EIN,  dx: 10, dy: 102 },
-      { id: newId(), name: "EOUT", t: TerminalTypes.EOUT, dx: 70, dy: 102 },
+      // Place IN on the left outside; OUT on the right outside (faceplate is 100px wide)
+      { id: newId(), name: "LIN",  t: TerminalTypes.LIN,  dx: -8,   dy: 22 },
+      { id: newId(), name: "LOUT", t: TerminalTypes.LOUT, dx: 108,  dy: 22 },
+      { id: newId(), name: "NIN",  t: TerminalTypes.NIN,  dx: -8,   dy: 62 },
+      { id: newId(), name: "NOUT", t: TerminalTypes.NOUT, dx: 108,  dy: 62 },
+      { id: newId(), name: "EIN",  t: TerminalTypes.EIN,  dx: -8,   dy: 102 },
+      { id: newId(), name: "EOUT", t: TerminalTypes.EOUT, dx: 108,  dy: 102 },
     ],
     internalLinks: [
       ["LIN", "LOUT"],
@@ -855,12 +863,13 @@ function makeSocket2G(x, y) {
   label: "2‑gang socket",
     x, y,
     terminals: [
-      { id: newId(), name: "LIN",  t: TerminalTypes.LIN,  dx: 10, dy: 18 },
-      { id: newId(), name: "LOUT", t: TerminalTypes.LOUT, dx: 70, dy: 18 },
-      { id: newId(), name: "NIN",  t: TerminalTypes.NIN,  dx: 10, dy: 58 },
-      { id: newId(), name: "NOUT", t: TerminalTypes.NOUT, dx: 70, dy: 58 },
-      { id: newId(), name: "EIN",  t: TerminalTypes.EIN,  dx: 10, dy: 98 },
-      { id: newId(), name: "EOUT", t: TerminalTypes.EOUT, dx: 70, dy: 98 },
+      // Faceplate is 120px wide in render; offset terminals to left/right
+      { id: newId(), name: "LIN",  t: TerminalTypes.LIN,  dx: -8,   dy: 18 },
+      { id: newId(), name: "LOUT", t: TerminalTypes.LOUT, dx: 128,  dy: 18 },
+      { id: newId(), name: "NIN",  t: TerminalTypes.NIN,  dx: -8,   dy: 58 },
+      { id: newId(), name: "NOUT", t: TerminalTypes.NOUT, dx: 128,  dy: 58 },
+      { id: newId(), name: "EIN",  t: TerminalTypes.EIN,  dx: -8,   dy: 98 },
+      { id: newId(), name: "EOUT", t: TerminalTypes.EOUT, dx: 128,  dy: 98 },
     ],
     internalLinks: [
       ["LIN", "LOUT"],
@@ -877,12 +886,13 @@ function makeSocket2GSwitched(x, y) {
   label: "2‑gang socket (switched)",
     x, y,
     terminals: [
-      { id: newId(), name: "LIN",  t: TerminalTypes.LIN,  dx: 10, dy: 18 },
-      { id: newId(), name: "LOUT", t: TerminalTypes.LOUT, dx: 70, dy: 18 },
-      { id: newId(), name: "NIN",  t: TerminalTypes.NIN,  dx: 10, dy: 58 },
-      { id: newId(), name: "NOUT", t: TerminalTypes.NOUT, dx: 70, dy: 58 },
-      { id: newId(), name: "EIN",  t: TerminalTypes.EIN,  dx: 10, dy: 98 },
-      { id: newId(), name: "EOUT", t: TerminalTypes.EOUT, dx: 70, dy: 98 },
+      // Faceplate is 140px wide in render; offset terminals to left/right
+      { id: newId(), name: "LIN",  t: TerminalTypes.LIN,  dx: -8,   dy: 18 },
+      { id: newId(), name: "LOUT", t: TerminalTypes.LOUT, dx: 148,  dy: 18 },
+      { id: newId(), name: "NIN",  t: TerminalTypes.NIN,  dx: -8,   dy: 58 },
+      { id: newId(), name: "NOUT", t: TerminalTypes.NOUT, dx: 148,  dy: 58 },
+      { id: newId(), name: "EIN",  t: TerminalTypes.EIN,  dx: -8,   dy: 98 },
+      { id: newId(), name: "EOUT", t: TerminalTypes.EOUT, dx: 148,  dy: 98 },
       // Add switch terminals if needed
       { id: newId(), name: "SW1", t: TerminalTypes.L1, dx: 40, dy: 38 },
       { id: newId(), name: "SW2", t: TerminalTypes.L2, dx: 40, dy: 78 },
@@ -902,14 +912,15 @@ function makeFCUUnswitched(x, y) {
   label: "Unswitched FCU",
     x, y,
     terminals: [
-      { id: newId(), name: "LIN",  t: TerminalTypes.LIN,  dx: 10, dy: 22 },
-      { id: newId(), name: "LOUT", t: TerminalTypes.LOUT, dx: 10, dy: 42 },
-      { id: newId(), name: "NIN",  t: TerminalTypes.NIN,  dx: 10, dy: 62 },
-      { id: newId(), name: "NOUT", t: TerminalTypes.NOUT, dx: 10, dy: 82 },
-      { id: newId(), name: "EIN",  t: TerminalTypes.EIN,  dx: 10, dy: 102 },
-      { id: newId(), name: "EOUT", t: TerminalTypes.EOUT, dx: 10, dy: 122 },
-      // Fused output
-      { id: newId(), name: "FUSED", t: TerminalTypes.LOUT, dx: 40, dy: 32 },
+      // Place IN on the left outside; OUT on the right outside (faceplate is 140px wide)
+      { id: newId(), name: "LIN",  t: TerminalTypes.LIN,  dx: -8,   dy: 22 },
+      { id: newId(), name: "LOUT", t: TerminalTypes.LOUT, dx: 148,  dy: 22 },
+      { id: newId(), name: "NIN",  t: TerminalTypes.NIN,  dx: -8,   dy: 62 },
+      { id: newId(), name: "NOUT", t: TerminalTypes.NOUT, dx: 148,  dy: 62 },
+      { id: newId(), name: "EIN",  t: TerminalTypes.EIN,  dx: -8,   dy: 102 },
+      { id: newId(), name: "EOUT", t: TerminalTypes.EOUT, dx: 148,  dy: 102 },
+      // Fused output (line out via fuse) — also on right side
+      { id: newId(), name: "FUSED", t: TerminalTypes.LOUT, dx: 148,  dy: 42 },
     ],
     internalLinks: [
       ["LIN", "LOUT"],
@@ -927,15 +938,15 @@ function makeFCUSwitched(x, y) {
   label: "Switched FCU",
     x, y,
     terminals: [
-      { id: newId(), name: "LIN",  t: TerminalTypes.LIN,  dx: 10, dy: 22 },
-      { id: newId(), name: "LOUT", t: TerminalTypes.LOUT, dx: 10, dy: 42 },
-      { id: newId(), name: "NIN",  t: TerminalTypes.NIN,  dx: 10, dy: 62 },
-      { id: newId(), name: "NOUT", t: TerminalTypes.NOUT, dx: 10, dy: 82 },
-      { id: newId(), name: "EIN",  t: TerminalTypes.EIN,  dx: 10, dy: 102 },
-      { id: newId(), name: "EOUT", t: TerminalTypes.EOUT, dx: 10, dy: 122 },
-      // Fused output
-      { id: newId(), name: "FUSED", t: TerminalTypes.LOUT, dx: 40, dy: 32 },
-      // Switch terminal
+      // Place IN on the left outside; OUT on the right outside (faceplate is 140px wide)
+      { id: newId(), name: "LIN",  t: TerminalTypes.LIN,  dx: -8,   dy: 22 },
+      { id: newId(), name: "LOUT", t: TerminalTypes.LOUT, dx: 148,  dy: 22 },
+      { id: newId(), name: "NIN",  t: TerminalTypes.NIN,  dx: -8,   dy: 62 },
+      { id: newId(), name: "NOUT", t: TerminalTypes.NOUT, dx: 148,  dy: 62 },
+      { id: newId(), name: "EIN",  t: TerminalTypes.EIN,  dx: -8,   dy: 102 },
+      { id: newId(), name: "EOUT", t: TerminalTypes.EOUT, dx: 148,  dy: 122 },
+      // Fused output and switch
+      { id: newId(), name: "FUSED", t: TerminalTypes.LOUT, dx: 148,  dy: 42 },
       { id: newId(), name: "SW", t: TerminalTypes.L1, dx: 40, dy: 52 },
     ],
     internalLinks: [
@@ -2052,6 +2063,129 @@ export default function App() {
     });
   }, []);
 
+  // --- History state (moved up to avoid no-use-before-define) ---
+  // Deep clone helper for safe snapshots
+  function deepCloneState(st) {
+    try { return structuredClone(st); }
+    catch { return JSON.parse(JSON.stringify(st)); }
+  }
+  // Push current state to undo stack and clear redo (deep cloned)
+  const pushHistory = useCallback(() => {
+    const snap = deepCloneState({ components, wires });
+    setUndoStack(stack => [...stack, snap]);
+    setRedoStack([]);
+  }, [components, wires]);
+
+  // Normalize terminals for small accessories (migrate legacy inside-faceplate terminals)
+  const normalizeSmallAccessoryTerminals = useCallback(() => {
+    const inRange = (v, a, b) => v >= a && v <= b;
+    const byName = (c, n) => c.terminals.find(t => t.name === n);
+    const adjust = (c, map) => ({
+      ...c,
+      terminals: c.terminals.map(t => (map[t.name] != null ? { ...t, dx: map[t.name](t).dx, dy: map[t.name](t).dy ?? t.dy } : t))
+    });
+
+    const normalized = components.map(c => {
+      switch (c.type) {
+        case ComponentTypes.SOCKET_1G: {
+          const LIN = byName(c, 'LIN'), LOUT = byName(c, 'LOUT');
+          // Legacy heuristic: IN around 10, OUT around 70
+          const legacy = LIN && LOUT && inRange(LIN.dx, 0, 20) && inRange(LOUT.dx, 60, 80);
+          if (!legacy) return c;
+          const W = 100; // faceplate width
+          return adjust(c, {
+            LIN: () => ({ dx: -8 }),
+            LOUT: () => ({ dx: W + 8 }),
+            NIN: () => ({ dx: -8 }),
+            NOUT: () => ({ dx: W + 8 }),
+            EIN: () => ({ dx: -8 }),
+            EOUT: () => ({ dx: W + 8 })
+          });
+        }
+        case ComponentTypes.SOCKET_2G: {
+          const LIN = byName(c, 'LIN'), LOUT = byName(c, 'LOUT');
+          const legacy = LIN && LOUT && inRange(LIN.dx, 0, 20) && inRange(LOUT.dx, 60, 80);
+          if (!legacy) return c;
+          const W = 120;
+          return adjust(c, {
+            LIN: () => ({ dx: -8 }),
+            LOUT: () => ({ dx: W + 8 }),
+            NIN: () => ({ dx: -8 }),
+            NOUT: () => ({ dx: W + 8 }),
+            EIN: () => ({ dx: -8 }),
+            EOUT: () => ({ dx: W + 8 })
+          });
+        }
+        case ComponentTypes.SOCKET_2G_SWITCHED: {
+          const LIN = byName(c, 'LIN'), LOUT = byName(c, 'LOUT');
+          const legacy = LIN && LOUT && inRange(LIN.dx, 0, 20) && inRange(LOUT.dx, 60, 80);
+          if (!legacy) return c;
+          const W = 140;
+          return adjust(c, {
+            LIN: () => ({ dx: -8 }),
+            LOUT: () => ({ dx: W + 8 }),
+            NIN: () => ({ dx: -8 }),
+            NOUT: () => ({ dx: W + 8 }),
+            EIN: () => ({ dx: -8 }),
+            EOUT: () => ({ dx: W + 8 })
+          });
+        }
+        case ComponentTypes.FCU_UNSWITCHED: {
+          const LOUT = byName(c, 'LOUT'), NOUT = byName(c, 'NOUT'), EOUT = byName(c, 'EOUT');
+          const legacy = LOUT && NOUT && EOUT && inRange(LOUT.dx, 0, 20) && inRange(NOUT.dx, 0, 20) && inRange(EOUT.dx, 0, 20);
+          if (!legacy) return c;
+          const W = 140;
+          return adjust(c, {
+            LIN: () => ({ dx: -8 }),
+            LOUT: () => ({ dx: W + 8 }),
+            NIN: () => ({ dx: -8 }),
+            NOUT: () => ({ dx: W + 8 }),
+            EIN: () => ({ dx: -8 }),
+            EOUT: () => ({ dx: W + 8 }),
+            FUSED: (t) => ({ dx: W + 8, dy: t.dy })
+          });
+        }
+        case ComponentTypes.FCU_SWITCHED: {
+          const LOUT = byName(c, 'LOUT'), NOUT = byName(c, 'NOUT'), EOUT = byName(c, 'EOUT');
+          const legacy = LOUT && NOUT && EOUT && inRange(LOUT.dx, 0, 20) && inRange(NOUT.dx, 0, 20) && inRange(EOUT.dx, 0, 20);
+          if (!legacy) return c;
+          const W = 140;
+          return adjust(c, {
+            LIN: () => ({ dx: -8 }),
+            LOUT: () => ({ dx: W + 8 }),
+            NIN: () => ({ dx: -8 }),
+            NOUT: () => ({ dx: W + 8 }),
+            EIN: () => ({ dx: -8 }),
+            EOUT: () => ({ dx: W + 8 }),
+            FUSED: (t) => ({ dx: W + 8, dy: t.dy })
+          });
+        }
+        case ComponentTypes.OUTDOOR_SOCKET_RCD: {
+          const LIN = byName(c, 'LIN'), LOUT = byName(c, 'LOUT');
+          const legacy = LIN && LOUT && inRange(LIN.dx, 0, 20) && inRange(LOUT.dx, 60, 80);
+          if (!legacy) return c;
+          const W = 160;
+          return adjust(c, {
+            LIN: () => ({ dx: -8 }),
+            LOUT: () => ({ dx: W + 8 }),
+            NIN: () => ({ dx: -8 }),
+            NOUT: () => ({ dx: W + 8 }),
+            EIN: () => ({ dx: -8 }),
+            EOUT: () => ({ dx: W + 8 })
+          });
+        }
+        default:
+          return c;
+      }
+    });
+
+    // Only push history when this operation changes anything
+    const changed = normalized.some((nc, i) => nc !== components[i]);
+    if (!changed) return;
+    pushHistory();
+    setComponents(normalized);
+  }, [components, pushHistory, setComponents]);
+
   const toggleSelection = useCallback((kind, id) => {
     setSelection((sel) => {
       const key = kind === "component" ? "components" : "wires";
@@ -2068,18 +2202,6 @@ export default function App() {
 
 
   // --- History state ---
-  
-  // Deep clone helper for safe snapshots
-  function deepCloneState(st) {
-    try { return structuredClone(st); }
-    catch { return JSON.parse(JSON.stringify(st)); }
-  }
-  // Push current state to undo stack and clear redo (deep cloned)
-  const pushHistory = useCallback(() => {
-    const snap = deepCloneState({ components, wires });
-    setUndoStack(stack => [...stack, snap]);
-    setRedoStack([]);
-  }, [components, wires]);
 
   // Undo/redo handlers
   const undo = useCallback(() => {
@@ -4256,6 +4378,11 @@ export default function App() {
           }}
           className="rounded border neutral-btn bg-white px-2 py-1 text-xs"
         >🔄 Restart</button>
+        <button
+          title="Normalize terminals for small accessories (migrate legacy positions)"
+          onClick={normalizeSmallAccessoryTerminals}
+          className="rounded border neutral-btn bg-white px-2 py-1 text-xs"
+        >🧰 Normalize terminals</button>
       </div>
 
       {/* Hotkeys Help Panel */}
@@ -4610,6 +4737,11 @@ export default function App() {
               {c.type === ComponentTypes.SWITCH_1WAY && (
                 viewMode === 'installers' ? (
                   <g>
+                    {/* faceplate */}
+                    <rect width={140} height={90} rx={10} fill={fadeBoxes ? "#f3f4f6" : "#ffffff"} stroke="#9ca3af" />
+                    {/* screws */}
+                    <circle cx={14} cy={45} r={3} fill="#cbd5e1" stroke="#94a3b8" />
+                    <circle cx={126} cy={45} r={3} fill="#cbd5e1" stroke="#94a3b8" />
                     {/* rocker (now keyboard/pointer accessible) */}
                     <g
                       tabIndex={0}
@@ -4619,8 +4751,10 @@ export default function App() {
                       onKeyDown={(e) => { if (isActivateKey(e)) { e.preventDefault(); toggleSwitch(c); } }}
                       style={{ cursor: 'pointer' }}
                     >
-                      <rect x={88} y={10} width={46} height={24} rx={12} className="fill-gray-200 stroke-gray-700" strokeWidth={2} />
-                      <rect x={c.state.on ? 110 : 90} y={12} width={22} height={20} rx={10} className="fill-white stroke-gray-700" strokeWidth={1} />
+                      {/* rocker recess */}
+                      <rect x={84} y={18} width={52} height={28} rx={14} fill="#e5e7eb" stroke="#cbd5e1" />
+                      {/* rocker */}
+                      <rect x={c.state.on ? 110 : 90} y={20} width={24} height={24} rx={12} className="fill-white stroke-gray-700" strokeWidth={1} />
                     </g>
                     {/* schematic line */}
                     <line x1={20} y1={20} x2={70} y2={60} stroke="#111827" strokeWidth={3} />
@@ -4650,6 +4784,11 @@ export default function App() {
               {c.type === ComponentTypes.SWITCH_2WAY && (
                 viewMode === 'installers' ? (
                   <g>
+                    {/* faceplate */}
+                    <rect width={140} height={90} rx={10} fill={fadeBoxes ? "#f3f4f6" : "#ffffff"} stroke="#9ca3af" />
+                    {/* screws */}
+                    <circle cx={14} cy={45} r={3} fill="#cbd5e1" stroke="#94a3b8" />
+                    <circle cx={126} cy={45} r={3} fill="#cbd5e1" stroke="#94a3b8" />
                     <g
                       tabIndex={0}
                       role="button"
@@ -4658,8 +4797,9 @@ export default function App() {
                       onKeyDown={(e) => { if (isActivateKey(e)) { e.preventDefault(); toggleSwitch(c); } }}
                       style={{ cursor: 'pointer' }}
                     >
-                      <rect x={88} y={10} width={46} height={24} rx={12} className="fill-gray-200 stroke-gray-700" strokeWidth={2} />
-                      <rect x={c.state.pos === 0 ? 110 : 90} y={12} width={22} height={20} rx={10} className="fill-white stroke-gray-700" strokeWidth={1} />
+                      {/* rocker recess */}
+                      <rect x={84} y={18} width={52} height={28} rx={14} fill="#e5e7eb" stroke="#cbd5e1" />
+                      <rect x={c.state.pos === 0 ? 110 : 90} y={20} width={24} height={24} rx={12} className="fill-white stroke-gray-700" strokeWidth={1} />
                     </g>
                     <line x1={20} y1={20} x2={70} y2={40} stroke="#111827" strokeWidth={3} />
                     <line x1={20} y1={70} x2={70} y2={40} stroke="#111827" strokeWidth={3} />
@@ -4737,26 +4877,59 @@ export default function App() {
 
               {c.type === ComponentTypes.CEILING_ROSE && (
                 <g>
+                  {/* Faceplate */}
                   <rect width={150} height={100} rx={16}
-                        className="fill-white" stroke={isSelected("component", c.id) ? "#2563eb" : "#9ca3af"} 
+                        className="fill-white" stroke={isSelected("component", c.id) ? "#2563eb" : "#9ca3af"}
                         filter={isSelected("component", c.id) ? "url(#selGlow)" : "url(#cardShadow)"}
-                        onMouseDown={(e)=>onMouseDownComponent(c,e)} 
+                        onMouseDown={(e)=>onMouseDownComponent(c,e)}
                         onClick={(e) => {
                           if (e.shiftKey) toggleSelection("component", c.id);
                           else replaceSelection("component", c.id);
                         }}
                         style={{cursor:'move'}}/>
+                  {/* Inner lip for subtle depth */}
+                  <rect x={4} y={4} width={142} height={92} rx={12} fill="#f9fafb" stroke="#e5e7eb" />
+
+                  {/* Mounting screws */}
+                  <g>
+                    <circle cx={16} cy={14} r={4.5} fill="#e5e7eb" stroke="#9ca3af" />
+                    <rect x={12.5} y={13.5} width={7} height={1.2} rx={0.6} fill="#6b7280" />
+                    <circle cx={134} cy={14} r={4.5} fill="#e5e7eb" stroke="#9ca3af" />
+                    <rect x={130.5} y={13.5} width={7} height={1.2} rx={0.6} fill="#6b7280" />
+                  </g>
+
                   <text x={8} y={-8} className="text-[10px] fill-gray-700">{c.label}</text>
-                  {/* three bays */}
+
+                  {/* Bays background */}
+                  <g>
+                    {/* Loop (L) bay */}
+                    <rect x={6} y={18} width={44} height={66} rx={6} fill="#fef3c7" stroke="#f59e0b" opacity={0.35} />
+                    {/* Neutral bay */}
+                    <rect x={56} y={18} width={44} height={66} rx={6} fill="#dbeafe" stroke="#3b82f6" opacity={0.35} />
+                    {/* Earth bay */}
+                    <rect x={106} y={18} width={38} height={66} rx={6} fill="#dcfce7" stroke="#10b981" opacity={0.35} />
+                    {/* Bay separators */}
+                    <line x1={52} y1={18} x2={52} y2={84} stroke="#e5e7eb" />
+                    <line x1={100} y1={18} x2={100} y2={84} stroke="#e5e7eb" />
+                  </g>
+
+                  {/* Bay labels */}
                   <text x={10} y={14} fontSize={10} fill="#92400e">Loop (L)</text>
                   <text x={60} y={14} fontSize={10} fill="#1e3a8a">Neutral</text>
                   <text x={110} y={14} fontSize={10} fill="#15803d">Earth</text>
-                  {/* lamp labels */}
-                  <text x={56} y={84} fontSize={10} fill="#374151">Lamp N</text>
-                  <text x={6}  y={94} fontSize={10} fill="#374151">SW L</text>
 
-                  {c.terminals.map(t=>(
-                    <Terminal key={t.id} terminal={t} onClick={onTerminalClick} probeA={probeA} probeB={probeB}/>
+                  {/* Lamp labels */}
+                  <text x={56} y={88} fontSize={10} fill="#374151">Lamp N</text>
+                  <text x={8}  y={96} fontSize={10} fill="#374151">SW L</text>
+
+                  {/* Pendant outlet hint */}
+                  <g opacity={0.6}>
+                    <circle cx={75} cy={96} r={3} fill="#9ca3af" />
+                  </g>
+
+                  {/* Terminals on top of visuals */}
+                  {c.terminals.map(t => (
+                    <Terminal key={t.id} terminal={t} onClick={onTerminalClick} probeA={probeA} probeB={probeB} />
                   ))}
                 </g>
               )}
@@ -4863,9 +5036,25 @@ export default function App() {
                 viewMode === 'installers' ? (
                   <g>
                     <rect width={120} height={100} rx={10} fill={fadeBoxes ? "#f3f4f6" : "#ffffff"} stroke="#9ca3af" />
-                    {/* Twin outlets (visual) */}
-                    <rect x={40} y={20} width={24} height={16} rx={3} fill="#e5e7eb" stroke="#cbd5e1" />
-                    <rect x={40} y={64} width={24} height={16} rx={3} fill="#e5e7eb" stroke="#cbd5e1" />
+                    {/* screws */}
+                    <circle cx={10} cy={50} r={3} fill="#cbd5e1" stroke="#94a3b8" />
+                    <circle cx={110} cy={50} r={3} fill="#cbd5e1" stroke="#94a3b8" />
+                    {/* Twin outlets with pin apertures */}
+                    {[0,1].map(i => {
+                      const baseY = 26 + i*44;
+                      const cx = 60; // center of outlet
+                      return (
+                        <g key={i}>
+                          {/* earth */}
+                          <rect x={cx-3} y={baseY} width={6} height={4} rx={1} fill="#4b5563" />
+                          {/* line/neutral */}
+                          <rect x={cx-12} y={baseY+8} width={6} height={10} rx={1} fill="#374151" />
+                          <rect x={cx+6} y={baseY+8} width={6} height={10} rx={1} fill="#374151" />
+                          {/* subtle mask plate */}
+                          <rect x={cx-18} y={baseY-2} width={36} height={22} rx={4} fill="#f1f5f9" stroke="#e5e7eb" />
+                        </g>
+                      );
+                    })}
                     {/* Label */}
                     <text x={6} y={114} fontSize={12} fill="#374151">{c.label}</text>
                     {/* Terminals */}
@@ -4902,18 +5091,31 @@ export default function App() {
               {c.type === ComponentTypes.SOCKET_2G_SWITCHED && (
                 <g>
                   <rect width={140} height={100} rx={10} fill={fadeBoxes ? "#f3f4f6" : "#ffffff"} stroke="#9ca3af" />
-                  {/* Two outlet apertures */}
-                  <rect x={46} y={20} width={26} height={16} rx={3} fill="#e5e7eb" stroke="#cbd5e1" />
-                  <rect x={46} y={64} width={26} height={16} rx={3} fill="#e5e7eb" stroke="#cbd5e1" />
+                  {/* screws */}
+                  <circle cx={12} cy={50} r={3} fill="#cbd5e1" stroke="#94a3b8" />
+                  <circle cx={128} cy={50} r={3} fill="#cbd5e1" stroke="#94a3b8" />
+                  {/* Two outlet groups */}
+                  {[0,1].map(i => {
+                    const baseY = 26 + i*44; const cx = 60;
+                    return (
+                      <g key={i}>
+                        <rect x={cx-18} y={baseY-2} width={36} height={22} rx={4} fill="#f1f5f9" stroke="#e5e7eb" />
+                        <rect x={cx-3} y={baseY} width={6} height={4} rx={1} fill="#4b5563" />
+                        <rect x={cx-12} y={baseY+8} width={6} height={10} rx={1} fill="#374151" />
+                        <rect x={cx+6} y={baseY+8} width={6} height={10} rx={1} fill="#374151" />
+                      </g>
+                    );
+                  })}
                   {/* Switch rocker */}
                   <g role="button" tabIndex={0}
                      aria-label={`Socket switch ${c.state?.on ? "on" : "off"}`}
                      onKeyDown={(e)=>{ if(isActivateKey(e)) toggleSwitch(c); }}
                      onClick={()=>toggleSwitch(c)}
                      style={{cursor:'pointer'}}>
-                    <rect x={88} y={20} width={36} height={22} rx={4} fill="#e5e7eb" stroke="#cbd5e1" />
-                    <rect x={c.state?.on ? 108 : 90} y={22} width={16} height={18} rx={3} className="fill-white stroke-gray-700" strokeWidth={1} />
-                    <text x={92} y={59} fontSize={10} fill="#374151">{c.state?.on ? "ON" : "OFF"}</text>
+                    {/* recess + rocker */}
+                    <rect x={92} y={20} width={40} height={26} rx={6} fill="#e5e7eb" stroke="#cbd5e1" />
+                    <rect x={c.state?.on ? 112 : 94} y={22} width={18} height={22} rx={4} className="fill-white stroke-gray-700" strokeWidth={1} />
+                    <text x={94} y={60} fontSize={10} fill="#374151">{c.state?.on ? "ON" : "OFF"}</text>
                   </g>
                   <text x={6} y={114} fontSize={12} fill="#374151">{c.label}</text>
                   {c.terminals.map((t)=>(
@@ -4933,8 +5135,14 @@ export default function App() {
                 viewMode === 'installers' ? (
                   <g onMouseDown={(e)=>onMouseDownComponent(c,e)}>
                     <rect width={100} height={110} rx={10} fill={fadeBoxes ? "#f3f4f6" : "#ffffff"} stroke="#9ca3af" />
-                    {/* Outlet aperture (visual) */}
-                    <rect x={38} y={40} width={24} height={16} rx={3} fill="#e5e7eb" stroke="#cbd5e1" />
+                    {/* screws */}
+                    <circle cx={10} cy={55} r={3} fill="#cbd5e1" stroke="#94a3b8" />
+                    <circle cx={90} cy={55} r={3} fill="#cbd5e1" stroke="#94a3b8" />
+                    {/* Outlet with pin apertures */}
+                    <rect x={32} y={36} width={36} height={24} rx={4} fill="#f1f5f9" stroke="#e5e7eb" />
+                    <rect x={50-3} y={38} width={6} height={4} rx={1} fill="#4b5563" />
+                    <rect x={42} y={46} width={6} height={10} rx={1} fill="#374151" />
+                    <rect x={58} y={46} width={6} height={10} rx={1} fill="#374151" />
                     <text x={6} y={124} fontSize={12} fill="#374151">{c.label}</text>
                     {c.terminals.map((t)=>(
                       <g key={t.id}
@@ -5044,9 +5252,9 @@ export default function App() {
                   {/* pull the same constants (fallback if old saves lack _layout) */}
                   {(() => {
                     const L = c.state?._layout || {};
-                    var BOX_W = L.BOX_W ?? 190, BOX_H = L.BOX_H ?? 240;
-                    var WAY_Y0 = L.WAY_Y0 ?? 56, WAY_SP = L.WAY_SP ?? 14;
-                    const N_BAR_Y = L.N_BAR_Y ?? 200; const E_BAR_Y = L.E_BAR_Y ?? 224;
+                    var BOX_W = L.BOX_W ?? 240, BOX_H = L.BOX_H ?? 300;
+                    var WAY_Y0 = L.WAY_Y0 ?? 56, WAY_SP = L.WAY_SP ?? 18;
+                    const N_BAR_Y = L.N_BAR_Y ?? 244; const E_BAR_Y = L.E_BAR_Y ?? 268;
 
                     return (
                       <g>
@@ -5074,29 +5282,38 @@ export default function App() {
                         {/* breaker rows (visual toggles) */}
                         {c.state.ways.map((w,i)=>{
                           const y = WAY_Y0 + i*WAY_SP;
+                          const rowX = 10, rowW = BOX_W - 20, rowH = 20;
+                          const stripe = i % 2 === 0;
+                          const ratingX = BOX_W - 14;
                           return (
                             <g key={i}>
+                              {/* zebra row background for readability */}
+                              {stripe && <rect x={rowX} y={y-8} width={rowW} height={rowH} rx={4} fill="#f8fafc" stroke="#e5e7eb" strokeOpacity={0.5} />}
+                              {/* row index */}
+                              <text x={rowX+2} y={y} fontSize={10} fill="#6b7280" alignmentBaseline="middle">{i+1}</text>
+                              {/* MCB toggle */}
                               <g role="button" tabIndex={0} aria-label={`MCB ${i+1} ${w.closed ? "ON" : "OFF"}`}
                                  onClick={()=>{
-                                   pushHistory(); // capture this toggle in history
+                                   pushHistory();
                                    updateComponent(c.id, prev=>{
                                      const ways = prev.state.ways.map((ww,j)=> j===i ? {...ww, closed:!ww.closed} : ww);
                                      return {...prev, state:{...prev.state, ways}};
                                    });
                                  }}
                                  onKeyDown={(e)=>{ if(isActivateKey(e)) {
-                                   pushHistory(); // capture this toggle in history
+                                   pushHistory();
                                    updateComponent(c.id, prev=>{
                                      const ways = prev.state.ways.map((ww,j)=> j===i ? {...ww, closed:!ww.closed} : ww);
                                      return {...prev, state:{...prev.state, ways}};
                                    });
                                  }}}
                                  style={{cursor:'pointer'}}>
-                                <rect x={64} y={y-8} width={48} height={14} rx={3} fill="#e5e7eb" stroke="#cbd5e1" />
-                                <rect x={w.closed ? 92 : 66} y={y-6} width={16} height={10} rx={2}
+            <rect x={64} y={y-11} width={58} height={18} rx={3} fill="#e5e7eb" stroke="#cbd5e1" />
+            <rect x={w.closed ? 101 : 67} y={y-7} width={20} height={14} rx={3}
                                       className="fill-white stroke-gray-700" strokeWidth={1} />
                               </g>
-                              <text x={118} y={y+3} fontSize={10} fill="#374151">{w.rating}</text>
+                              {/* rating right-aligned */}
+                              <text x={ratingX} y={y} fontSize={10} fill="#374151" alignmentBaseline="middle" textAnchor="end">{w.rating}</text>
                             </g>
                           );
                         })}
@@ -5181,20 +5398,29 @@ export default function App() {
                   <text x={180} y={84} fontSize={13} fill="#374151">RCBO</text>
                   {/* Per-way rows */}
                   {c.state.ways.map((w, i) => {
-                    const y = 33 + i * 24;
+                    const y = 33 + i * 24; // row center
+                    const rowX = 12, rowW = 306, rowH = 20; // inside the lid width
+                    const stripe = i % 2 === 0;
+                    const ratingX = rowX + rowW - 6;
                     return (
                       <g key={i}>
-                        {/* MCB */}
+                        {/* row background for readability */}
+                        {stripe && (
+                          <rect x={rowX} y={y - rowH/2} width={rowW} height={rowH} rx={4} fill="#f8fafc" stroke="#e5e7eb" strokeOpacity={0.5} />
+                        )}
+                        {/* index gutter */}
+                        <text x={rowX + 4} y={y} fontSize={10} fill="#6b7280" alignmentBaseline="middle">{i + 1}</text>
+                        {/* MCB toggle */}
                         <g role="button" tabIndex={0} aria-label={`MCB ${i+1} ${w.closed ? "ON" : "OFF"}`}
                            onClick={()=>{
-                             pushHistory(); // capture this toggle in history
+                             pushHistory();
                              updateComponent(c.id, prev=>{
                                const ways = prev.state.ways.map((ww,j)=> j===i ? {...ww, closed: !ww.closed} : ww);
                                return {...prev, state:{...prev.state, ways}};
                              });
                            }}
                            onKeyDown={(e)=>{ if(isActivateKey(e)) {
-                             pushHistory(); // capture this toggle in history
+                             pushHistory();
                              updateComponent(c.id, prev=>{
                                const ways = prev.state.ways.map((ww,j)=> j===i ? {...ww, closed: !ww.closed} : ww);
                                return {...prev, state:{...prev.state, ways}};
@@ -5222,10 +5448,9 @@ export default function App() {
                           <rect x={168} y={y-9} width={27} height={18} rx={3} fill="#e5e7eb" stroke="#cbd5e1" />
                           <rect x={w.rcbo ? 177 : 171} y={y-6} width={12} height={12} rx={3} className="fill-white stroke-gray-700" strokeWidth={1} />
                         </g>
-                        {/* Rating + inline label editor */}
-                        <text x={12} y={y+15} fontSize={13} fill="#374151">{w.rating}</text>
+                        {/* Inline label editor or static label */}
                         {labelEdit?.compId === c.id && labelEdit.i === i ? (
-                          <foreignObject x={36} y={y+3} width={120} height={21}>
+                          <foreignObject x={36} y={y-10} width={120} height={21}>
                             <input xmlns="http://www.w3.org/1999/xhtml" type="text"
                               value={labelEdit.value} autoFocus
                               onChange={(e)=>setLabelEdit({...labelEdit, value: e.target.value})}
@@ -5235,18 +5460,20 @@ export default function App() {
                             />
                           </foreignObject>
                         ) : (
-                          <text x={36} y={y+15} fontSize={13} fill="#6b7280" style={{cursor:'text'}}
+                          <text x={36} y={y} fontSize={13} fill="#374151" alignmentBaseline="middle" style={{cursor:'text'}}
                                 onClick={() => setLabelEdit({ compId: c.id, i, value: w.label })}>
                             {w.label}
                           </text>
                         )}
+                        {/* Rating right-aligned */}
+                        <text x={ratingX} y={y} fontSize={12} fill="#374151" alignmentBaseline="middle" textAnchor="end">{w.rating}</text>
                       </g>
                     );
                   })}
                   {/* Bank separator + captions */}
                   {(() => {
                     const half = Math.floor(c.state.ways.length / 2);
-                    const sepY = 22 + half * 16 - 6;
+                    const sepY = 33 + half * 24 - 12; // centered between banks
                     return (
                       <g>
                         <line x1={12} y1={sepY} x2={318} y2={sepY} stroke="#e5e7eb" strokeWidth="1" strokeDasharray="4 3" />
